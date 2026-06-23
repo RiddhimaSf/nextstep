@@ -321,8 +321,27 @@ header {visibility: hidden;}
     margin-bottom: 16px;
     display: inline-block;
 }
+
+/* Quick exit button - always visible, top right */
+.ns-quick-exit {
+    position: fixed;
+    top: 12px;
+    right: 12px;
+    z-index: 9999;
+    background: #D94F3D;
+    color: white !important;
+    text-decoration: none !important;
+    padding: 10px 16px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 700;
+    font-family: 'Inter', sans-serif;
+    box-shadow: 0 2px 8px rgba(217, 79, 61, 0.3);
+}
+.ns-quick-exit:hover { background: #B83A2A; }
 </style>
 """, unsafe_allow_html=True)
+
 
 # ── Hospital Data ─────────────────────────────────────────────────────────────
 
@@ -351,33 +370,56 @@ HOSPITALS = [
 
 SAFE_PLACES = {
     "Manhattan": [
-        {"name": "NYC Safe Horizon Crisis Centre", "address": "2 Lafayette St, Manhattan", "phone": "1-800-621-4673", "type": "Crisis Centre"},
-        {"name": "Bellevue Hospital ER", "address": "462 First Avenue, Manhattan", "phone": "(212) 562-4132", "type": "Hospital"},
-        {"name": "NYPD 17th Precinct", "address": "167 E 51st St, Manhattan", "phone": "212-826-3211", "type": "Police"},
+        {"name": "NYC Family Justice Center – Manhattan (Safe Horizon advocates on-site)", "address": "80 Centre St, Manhattan", "phone": "212-602-2800", "type": "Family Justice Center", "hours": "Mon–Fri 9am–5pm"},
+        {"name": "Bellevue Hospital ER", "address": "462 First Avenue, Manhattan", "phone": "(212) 562-4132", "type": "Hospital", "hours": "24/7"},
+        {"name": "NYPD 17th Precinct", "address": "167 E 51st St, Manhattan", "phone": "212-826-3211", "type": "Police", "hours": "24/7"},
     ],
     "Brooklyn": [
-        {"name": "Safe Horizon Brooklyn", "address": "330 Jay St, Brooklyn", "phone": "1-800-621-4673", "type": "Crisis Centre"},
-        {"name": "Kings County Hospital ER", "address": "451 Clarkson Ave, Brooklyn", "phone": "(718) 245-3901", "type": "Hospital"},
-        {"name": "NYPD 84th Precinct", "address": "301 Gold St, Brooklyn", "phone": "718-875-6811", "type": "Police"},
+        {"name": "NYC Family Justice Center – Brooklyn (Safe Horizon advocates on-site)", "address": "350 Jay St, 14th Floor, Brooklyn", "phone": "718-250-5113", "type": "Family Justice Center", "hours": "Mon–Fri 9am–5pm"},
+        {"name": "Kings County Hospital ER", "address": "451 Clarkson Ave, Brooklyn", "phone": "(718) 245-3901", "type": "Hospital", "hours": "24/7"},
+        {"name": "NYPD 84th Precinct", "address": "301 Gold St, Brooklyn", "phone": "718-875-6811", "type": "Police", "hours": "24/7"},
     ],
     "Queens": [
-        {"name": "Safe Horizon Queens", "address": "126-02 82nd Ave, Queens", "phone": "1-800-621-4673", "type": "Crisis Centre"},
-        {"name": "Elmhurst Hospital ER", "address": "79-01 Broadway, Queens", "phone": "(718) 334-4000", "type": "Hospital"},
-        {"name": "NYPD 109th Precinct", "address": "37-05 Union St, Queens", "phone": "718-321-2250", "type": "Police"},
+        {"name": "NYC Family Justice Center – Queens (Safe Horizon advocates on-site)", "address": "126-02 82nd Ave, Kew Gardens, Queens", "phone": "718-575-4545", "type": "Family Justice Center", "hours": "Mon–Fri 9am–5pm"},
+        {"name": "Elmhurst Hospital ER", "address": "79-01 Broadway, Queens", "phone": "(718) 334-4000", "type": "Hospital", "hours": "24/7"},
+        {"name": "NYPD 109th Precinct", "address": "37-05 Union St, Queens", "phone": "718-321-2250", "type": "Police", "hours": "24/7"},
     ],
     "Bronx": [
-        {"name": "Safe Horizon Bronx", "address": "198 E 161st St, Bronx", "phone": "1-800-621-4673", "type": "Crisis Centre"},
-        {"name": "Lincoln Medical Center ER", "address": "234 East 149th Street, Bronx", "phone": "(718) 579-5700", "type": "Hospital"},
-        {"name": "NYPD 40th Precinct", "address": "257 Alexander Ave, Bronx", "phone": "718-402-2270", "type": "Police"},
+        {"name": "NYC Family Justice Center – Bronx (Safe Horizon advocates on-site)", "address": "198 E 161st St, 2nd Floor, Bronx", "phone": "718-508-1220", "type": "Family Justice Center", "hours": "Mon–Fri 9am–5pm"},
+        {"name": "Lincoln Medical Center ER", "address": "234 East 149th Street, Bronx", "phone": "(718) 579-5700", "type": "Hospital", "hours": "24/7"},
+        {"name": "NYPD 40th Precinct", "address": "257 Alexander Ave, Bronx", "phone": "718-402-2270", "type": "Police", "hours": "24/7"},
     ],
     "Staten Island": [
-        {"name": "Safe Horizon Staten Island", "address": "126 Stuyvesant Pl, Staten Island", "phone": "1-800-621-4673", "type": "Crisis Centre"},
-        {"name": "Richmond University Medical Center ER", "address": "355 Bard Avenue, Staten Island", "phone": "(718) 818-1234", "type": "Hospital"},
-        {"name": "NYPD 120th Precinct", "address": "78 Richmond Terrace, Staten Island", "phone": "718-876-8500", "type": "Police"},
+        {"name": "NYC Family Justice Center – Staten Island (Safe Horizon advocates on-site)", "address": "126 Stuyvesant Pl, Staten Island", "phone": "718-697-4300", "type": "Family Justice Center", "hours": "Mon–Fri 9am–5pm"},
+        {"name": "Richmond University Medical Center ER", "address": "355 Bard Avenue, Staten Island", "phone": "(718) 818-1234", "type": "Hospital", "hours": "24/7"},
+        {"name": "NYPD 120th Precinct", "address": "78 Richmond Terrace, Staten Island", "phone": "718-876-8500", "type": "Police", "hours": "24/7"},
     ],
 }
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
+CRISIS_TERMS = [
+    "kill myself", "kill me", "end my life", "end it all", "want to die",
+    "don't want to live", "dont want to live", "no reason to live",
+    "no point in living", "suicidal", "suicide", "hurt myself",
+    "harm myself", "self harm", "self-harm", "can't go on", "cant go on",
+    "can't do this anymore", "cant do this anymore", "better off dead",
+    "don't see the point", "dont see the point", "want to end",
+]
+
+def is_crisis(text):
+    t = text.lower()
+    return any(term in t for term in CRISIS_TERMS)
+
+def show_crisis_resources():
+    card("You don't have to face this alone — please reach out right now",
+         "If you are in immediate danger, call <b>911</b>.", "red")
+    card("📞 988 Suicide &amp; Crisis Lifeline",
+         "Call or text <b>988</b>, anytime. Free, confidential, 24/7. You can talk to someone right now.", "red")
+    card("📞 Safe Horizon 24/7 Hotline: 1-800-621-4673",
+         "Trained advocates are available any time, day or night.", "default")
+    card("📞 RAINN: 1-800-656-4673",
+         "Free, confidential support, 24/7.", "default")
 
 def haversine(lat1, lng1, lat2, lng2):
     R = 3958.8
@@ -437,6 +479,12 @@ def logo():
     <div class='ns-divider'></div>
     """, unsafe_allow_html=True)
 
+def quick_exit():
+    st.markdown(
+        "<a href='https://www.google.com' target='_top' class='ns-quick-exit'>✕ Quick exit</a>",
+        unsafe_allow_html=True
+    )
+
 def footer():
     st.markdown("""
     <div class='ns-footer'>
@@ -445,7 +493,7 @@ def footer():
     </div>
     <div class='ns-disclaimer'>
         NextStep is an independent resource and is not affiliated with RAINN, Safe Horizon,
-        NYC Well, or any other organisation listed. All organisations are referenced for
+        NYC 988, or any other organisation listed. All organisations are referenced for
         informational purposes only. This tool does not constitute legal, medical, or
         professional advice. If you are in immediate danger please call 911.
     </div>
@@ -469,6 +517,7 @@ if "user_lng" not in st.session_state:
 
 # ── RENDER ────────────────────────────────────────────────────────────────────
 
+quick_exit()
 logo()
 
 # ── SCREEN 1 — Location ───────────────────────────────────────────────────────
@@ -591,7 +640,20 @@ elif st.session_state.step == 3:
             except:
                 card("Nearest safe places", "Go into any open pharmacy, deli, or subway station you can see nearby.", "default")
         else:
-            card("Nearest safe places", "Go into any open pharmacy, deli, or subway station you can see nearby.", "default")
+            # Fallback: show verified borough safe places when live location isn't available
+            borough = st.session_state.borough
+            if borough and borough in SAFE_PLACES:
+                for place in SAFE_PLACES[borough]:
+                    st.markdown(f"""
+                    <div class='ns-hospital-card'>
+                        <div class='ns-hospital-name'>{place['name']}</div>
+                        <div class='ns-hospital-detail'>📍 {place['address']}</div>
+                        <div class='ns-hospital-detail'>📞 {place['phone']}</div>
+                        <div class='ns-hospital-detail'>🕒 {place['hours']}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+            else:
+                card("Nearest safe places", "Go into any open pharmacy, deli, or subway station you can see nearby.", "default")
 
         card("Once you are inside", "Tell a staff member you need help. Ask them to call 911 or stay with you while you call. You do not have to explain everything.", "default")
         card("📞 Safe Horizon: 1-800-621-4673", "They can stay on the phone with you.", "default")
@@ -651,7 +713,7 @@ elif st.session_state.step == 5:
     progress(5)
     st.markdown("<div class='ns-section-title'>Going to the hospital is your best next step</div>", unsafe_allow_html=True)
 
-    card("What a SANE nurse will do for you", "Treat any injuries. Give you emergency contraception if you want it. Test and treat for STIs. Collect forensic evidence. You are in control of every step. You can stop at any time. You do not have to involve the police.", "default")
+    card("What a SANE nurse can do for you", "Treat any injuries. Offer emergency contraception if you want it. Test and treat for STIs. Collect forensic evidence. You are in control of every step — you can stop at any time, and you do not have to involve the police.", "default")
     card("Before you go", "Try not to shower, change clothes, or comb your hair. If you already did these things, please still go. Your care matters more than evidence.", "amber")
     card("The exam is completely free", "You will not receive a bill. No insurance needed. Evidence can be collected up to 5 days after the assault.", "green")
 
@@ -721,11 +783,13 @@ elif st.session_state.step == 6:
     st.markdown("<div class='ns-section-title'>What to expect at the hospital</div>", unsafe_allow_html=True)
     st.markdown("<div class='ns-section-subtitle'>Knowing what's coming can make it feel less overwhelming.</div>", unsafe_allow_html=True)
 
-    card("When you arrive", "You will be taken to a private room immediately. A SANE nurse will explain everything before doing anything. You can have a support person with you the entire time.", "default")
-    card("Questions the nurse will ask", "Your general health and medications. What happened, when, and where. Any recent consensual sexual activity (only to identify evidence correctly, not to judge you). You can answer as much or as little as you want.", "default")
-    card("What the exam involves", "A physical exam for injuries. Photographs if you consent. DNA swabs. STI testing and prevention. Emergency contraception if you want it. Toxicology testing if you think you were drugged.", "default")
-    card("You are in control", "You can say no to any part of the exam at any time. Nothing happens without your permission.", "green")
-    card("About your evidence kit", "If you choose not to report today your kit is stored for at least 6 months. You can decide to report later and the evidence will still be there.", "default")
+    card("When you arrive", "You will usually be taken to a private room. A SANE nurse typically explains each step before doing anything, and you can have a support person with you the whole time.", "default")
+    card("It usually takes a few hours", "A full exam often takes around 3 to 4 hours — sometimes less, sometimes more. It can help to know that going in, so the length doesn't catch you off guard. You can take breaks.", "amber")
+    card("Bring a change of clothes if you can", "The clothes worn during the assault are usually collected as evidence. If you have a spare set, bring them — and if you can't, the hospital can usually provide something.", "default")
+    card("Questions you may be asked", "Your general health and medications. What happened, when, and where. You may also be asked about recent consensual sex — only to correctly identify DNA evidence, never to judge you. You can answer as much or as little as you want.", "default")
+    card("What the exam may involve", "A physical check for injuries. Photographs, if you consent. DNA swabs. STI testing and prevention. Emergency contraception if you want it. If you think you may have been drugged, a toxicology test (blood or urine) can be done.", "default")
+    card("You are in control", "You can decline any part of the exam at any time. Nothing happens without your permission.", "green")
+    card("About your evidence kit", "If you choose not to report right now, your kit is stored securely for 20 years under New York law. You can decide to report at any point during that time, and the evidence will still be there.", "default")
 
     if st.button("Continue"):
         st.session_state.step = 7
@@ -753,22 +817,22 @@ elif st.session_state.step == 7:
     if need == "I need to talk to someone right now":
         card("RAINN: 1-800-656-4673", "Call, chat at <a href='https://rainn.org/get-help' target='_blank'>rainn.org/get-help</a>, or text HOPE to 64673. Trained sexual assault advocates available 24/7. Free and confidential.")
         card("NYC Safe Horizon: 1-800-621-4673", "Free, confidential, 24/7 support in New York City. <a href='https://www.safehorizon.org' target='_blank'>safehorizon.org</a>")
-        card("NYC Well: 1-888-692-9355", "Free mental health support. Call, text, or chat anytime. <a href='https://nycwell.cityofnewyork.us' target='_blank'>nycwell.cityofnewyork.us</a>")
+        card("NYC 988", "Call or text <b>988</b> anytime for free mental health support. Available 24/7. <a href='https://nyc988.cityofnewyork.us' target='_blank'>nyc988.cityofnewyork.us</a>")
 
     elif need == "I want to understand my legal options":
         card("Reporting to the police", "You can report at any time. There is no deadline. If you report, a detective will be assigned. You have the right to have an advocate with you during any police interaction.")
         card("Protection order", "A protection order legally requires the person to stay away from you. You can apply even without reporting to the police. Safe Horizon can help for free. Call 1-800-621-4673 or visit <a href='https://www.safehorizon.org/get-help/legal-advocacy' target='_blank'>safehorizon.org</a>")
         card("Your right to an advocate", "At every stage of any legal process you have the right to a trained advocate with you. This is free. Call Safe Horizon at 1-800-621-4673 to request one.")
-        card("Your evidence kit", "If a forensic exam was done and you chose not to report, your evidence kit is stored for at least 6 months. You can report later and the evidence will still be available.")
+        card("Your evidence kit", "If a forensic exam was done and you chose not to report, your evidence kit is stored for 20 years under New York law. You can report later and the evidence will still be available.")
 
     elif need == "I need counselling or mental health support":
         card("Safe Horizon counselling", "Free individual and group counselling for survivors in New York City. No insurance needed. Call 1-800-621-4673 or visit <a href='https://www.safehorizon.org/get-help/counseling-support-groups' target='_blank'>safehorizon.org</a>")
         card("RAINN local support finder", "Find trauma-informed therapists and support groups near you. <a href='https://centers.rainn.org' target='_blank'>centers.rainn.org</a>")
-        card("NYC Well: 1-888-692-9355", "Free mental health support. Call, text, or chat anytime. <a href='https://nycwell.cityofnewyork.us' target='_blank'>nycwell.cityofnewyork.us</a>")
+        card("NYC 988", "Call or text <b>988</b> anytime for free mental health support. Available 24/7. <a href='https://nyc988.cityofnewyork.us' target='_blank'>nyc988.cityofnewyork.us</a>")
 
     elif need == "I want to know about financial assistance":
         card("The forensic exam is completely free", "Under federal law you cannot be billed for a forensic exam. If you receive a bill do not pay it. Contact Safe Horizon immediately at 1-800-621-4673 and they will resolve it.", "green")
-        card("NYC Crime Victims Compensation", "Covers ongoing medical bills, counselling, lost wages, and other expenses. You may be eligible even without a police report. Apply at <a href='https://otda.ny.gov/programs/ovs/compensation.asp' target='_blank'>otda.ny.gov</a> or call 1-800-247-8035.")
+        card("NYC Crime Victims Compensation", "Covers ongoing medical bills, counselling, lost wages, and other expenses. You may be eligible even without a police report. Apply at <a href='https://ovs.ny.gov/claim-reimbursement' target='_blank'>ovs.ny.gov</a> or call 1-800-247-8035.")
         card("Safe Horizon financial advocacy", "Safe Horizon can help you apply for compensation and handle any billing issues. Free. Call 1-800-621-4673 or visit <a href='https://www.safehorizon.org' target='_blank'>safehorizon.org</a>")
 
     st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
@@ -778,32 +842,37 @@ elif st.session_state.step == 7:
     question = st.text_area("", placeholder="What's on your mind?", label_visibility="collapsed")
 
     if st.button("Get answer") and question:
-        client = anthropic.Anthropic(api_key=ANTHROPIC_KEY)
+        # Crisis check runs BEFORE any AI call — deterministic, never left to the model
+        if is_crisis(question):
+            st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
+            show_crisis_resources()
+        else:
+            client = anthropic.Anthropic(api_key=ANTHROPIC_KEY)
 
-        prompt = (
-            "You are a compassionate trauma-informed guide helping a sexual assault survivor in New York City.\n\n"
-            "Important principles:\n"
-            "- Always begin by acknowledging their courage\n"
-            "- Lead with belief and validation\n"
-            "- Never pressure them to report to police\n"
-            "- Keep language warm, plain, and clear\n"
-            "- Always end with RAINN number 1-800-656-4673\n"
-            "- Never judge any decision they make\n"
-            "- If they ask about costs: forensic exam is free, no bill will come\n"
-            "- If they ask about reporting: entirely their choice, no pressure\n"
-            "- If they seem to be in crisis: gently encourage them to call RAINN now\n\n"
-            f"Their question: {question}\n\n"
-            "Answer warmly and concisely. Be human. Be kind."
-        )
-
-        with st.spinner(""):
-            message = client.messages.create(
-                model="claude-opus-4-5",
-                max_tokens=1000,
-                messages=[{"role": "user", "content": prompt}]
+            system_prompt = (
+                "You are a compassionate trauma-informed guide helping a sexual assault survivor in New York City.\n\n"
+                "Important principles:\n"
+                "- Lead with belief and validation\n"
+                "- Never pressure them to report to police; reporting is entirely their choice\n"
+                "- Keep language warm, plain, and clear\n"
+                "- Never judge any decision they make\n"
+                "- If they ask about costs: the forensic exam is free, no bill will come\n"
+                "- You provide information and options only — you are not a substitute for a doctor, "
+                "lawyer, or counsellor, and you do not give medical or legal advice\n"
+                "- Always close by pointing them to a real person: RAINN at 1-800-656-4673 or "
+                "Safe Horizon at 1-800-621-4673\n\n"
+                "Answer warmly and concisely. Be human. Be kind."
             )
-        st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
-        card("", message.content[0].text)
+
+            with st.spinner(""):
+                message = client.messages.create(
+                    model="claude-sonnet-4-6",
+                    max_tokens=1000,
+                    system=system_prompt,
+                    messages=[{"role": "user", "content": question}]
+                )
+            st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
+            card("", message.content[0].text)
 
     back_button(6)
 
