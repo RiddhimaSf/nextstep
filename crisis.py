@@ -597,9 +597,10 @@ elif st.session_state.step == 3:
 
     elif situation == "I'm inside but scared to go out alone":
         st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
-        card("You do not have to go anywhere alone", "Safe Horizon will send an advocate to come to you. Call 1-800-621-4673 and ask for hospital accompaniment. This is free and available 24/7.", "green")
-        card("Other options", "Call someone you trust to come to you. Or call 911 and they can send someone to escort you safely.", "default")
-        card("📞 Safe Horizon: 1-800-621-4673", "Ask for hospital accompaniment. Someone will come to you.", "default")
+        card("You don't have to go anywhere right now", "If it isn't safe to leave, you can get help exactly where you are. Trained people can help you figure out how to stay safe, or leave safely when you're ready — for free. Some people call them advocates.", "green")
+        card("If you can't speak out loud safely — text or chat", "Text <b>844-997-2121</b> (24/7, no call needed).<br>Safe Horizon: call or chat at <b>1-800-621-4673</b> (24/7).", "default")
+        card("To talk with an advocate in person, when you're ready", "<b>Daytime (Mon–Fri, 8am–8pm):</b> Safe Horizon has an advocate in every NYPD police station. You do not need to file a police report to talk to them.<br><br><b>Nights &amp; weekends:</b> The Crime Victims Treatment Center has advocates at their hospitals overnight and on weekends.", "default")
+        card("If you are in immediate danger, call 911", "You can say: \"I need help, I don't feel safe.\"", "red")
 
     elif situation == "I'm outside and don't feel safe":
         st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
@@ -820,10 +821,11 @@ elif st.session_state.step == 7:
         card("NYC 988", "Call or text <b>988</b> anytime for free mental health support. Available 24/7. <a href='https://nyc988.cityofnewyork.us' target='_blank'>nyc988.cityofnewyork.us</a>")
 
     elif need == "I want to understand my legal options":
-        card("Reporting to the police", "You can report at any time. There is no deadline. If you report, a detective will be assigned. You have the right to have an advocate with you during any police interaction.")
+        card("Reporting is your choice", "You do not have to go to the police. It is your choice whether to report — you can still get medical care and have evidence collected without involving law enforcement. There is no deadline to decide.")
+        card("Your evidence gives you time", "If a forensic exam was done and you chose not to report, your evidence kit is stored for 20 years under New York law. You can decide to report at any point during that time, and the evidence will still be available.")
+        card("If you do want to report", "You can report to the NYPD Special Victims Division at <b>646-610-7273</b>, or call the NYS Police Sexual Assault Hotline at <b>1-844-845-7269</b>. You have the right to have an advocate with you for any of this.")
         card("Protection order", "A protection order legally requires the person to stay away from you. You can apply even without reporting to the police. Safe Horizon can help for free. Call 1-800-621-4673 or visit <a href='https://www.safehorizon.org/get-help/legal-advocacy' target='_blank'>safehorizon.org</a>")
         card("Your right to an advocate", "At every stage of any legal process you have the right to a trained advocate with you. This is free. Call Safe Horizon at 1-800-621-4673 to request one.")
-        card("Your evidence kit", "If a forensic exam was done and you chose not to report, your evidence kit is stored for 20 years under New York law. You can report later and the evidence will still be available.")
 
     elif need == "I need counselling or mental health support":
         card("Safe Horizon counselling", "Free individual and group counselling for survivors in New York City. No insurance needed. Call 1-800-621-4673 or visit <a href='https://www.safehorizon.org/get-help/counseling-support-groups' target='_blank'>safehorizon.org</a>")
@@ -831,9 +833,9 @@ elif st.session_state.step == 7:
         card("NYC 988", "Call or text <b>988</b> anytime for free mental health support. Available 24/7. <a href='https://nyc988.cityofnewyork.us' target='_blank'>nyc988.cityofnewyork.us</a>")
 
     elif need == "I want to know about financial assistance":
-        card("The forensic exam is completely free", "Under federal law you cannot be billed for a forensic exam. If you receive a bill do not pay it. Contact Safe Horizon immediately at 1-800-621-4673 and they will resolve it.", "green")
-        card("NYC Crime Victims Compensation", "Covers ongoing medical bills, counselling, lost wages, and other expenses. You may be eligible even without a police report. Apply at <a href='https://ovs.ny.gov/claim-reimbursement' target='_blank'>ovs.ny.gov</a> or call 1-800-247-8035.")
-        card("Safe Horizon financial advocacy", "Safe Horizon can help you apply for compensation and handle any billing issues. Free. Call 1-800-621-4673 or visit <a href='https://www.safehorizon.org' target='_blank'>safehorizon.org</a>")
+        card("The forensic exam is completely free", "Under federal law you cannot be billed for the forensic exam. If you receive a bill, do not pay it — contact Safe Horizon at 1-800-621-4673 and they can help resolve it.", "green")
+        card("You may be able to get money back for what this cost you", "New York's Office of Victim Services (OVS) can reimburse crime-related costs like medical bills, counselling, and lost wages. As of a recent change (December 2025), you may not need a police report — a form signed by a medical or mental health provider (the Crime Verification Form) can be used instead for most types of compensation. Start a claim at <a href='https://ovs.ny.gov/victim-compensation' target='_blank'>ovs.ny.gov</a> or call 1-800-247-8035.")
+        card("These organisations will do the paperwork for you", "Filing can be complicated — these groups have specialists who handle it so you don't have to:<br><br><b>Crime Victims Treatment Center</b> — will file your OVS claim for you and work to get you the maximum. Call <b>212-523-4728</b>.<br><br><b>Sanctuary for Families</b> — help with compensation alongside legal support. <a href='https://www.sanctuaryforfamilies.org' target='_blank'>sanctuaryforfamilies.org</a>")
 
     st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
     st.markdown("<div class='ns-section-title'>Do you have a question?</div>", unsafe_allow_html=True)
