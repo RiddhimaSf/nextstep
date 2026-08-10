@@ -1,0 +1,9 @@
+.venv
+.git
+.env
+__pycache__
+*.pyc
+.streamlit/secrets.toml
+sent_escalation_keys.txt
+escalation_log.txt
+logs/

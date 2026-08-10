@@ -1,16 +1,25 @@
+from dotenv import load_dotenv
+load_dotenv()
+
+from agent.scope_check import is_in_nyc_scope, scope_check_message
+from agent.escalation import is_crisis
 import streamlit as st
 import anthropic
 import googlemaps
 from datetime import datetime
 import math
 import urllib.parse
+from agent.rag_tool import search_kb_handler, GROUNDING_PROMPT
+from tools.slack_client import post_escalation_to_slack
+import os
+USE_RAG = True
 
 st.set_page_config(page_title="NextStep", page_icon="👣", layout="centered")
 
 # ── API Keys ──────────────────────────────────────────────────────────────────
 
-ANTHROPIC_KEY = st.secrets["ANTHROPIC_KEY"]
-GOOGLE_MAPS_KEY = st.secrets["GOOGLE_MAPS_KEY"]
+ANTHROPIC_KEY = os.environ.get("ANTHROPIC_KEY", "")
+GOOGLE_MAPS_KEY = os.environ.get("GOOGLE_MAPS_KEY", "")
 
 # ── Custom CSS ────────────────────────────────────────────────────────────────
 
@@ -397,19 +406,15 @@ SAFE_PLACES = {
 }
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
-
-CRISIS_TERMS = [
-    "kill myself", "kill me", "end my life", "end it all", "want to die",
-    "don't want to live", "dont want to live", "no reason to live",
-    "no point in living", "suicidal", "suicide", "hurt myself",
-    "harm myself", "self harm", "self-harm", "can't go on", "cant go on",
-    "can't do this anymore", "cant do this anymore", "better off dead",
-    "don't see the point", "dont see the point", "want to end",
-]
-
-def is_crisis(text):
-    t = text.lower()
-    return any(term in t for term in CRISIS_TERMS)
+#
+# NOTE (Day 5 fix): is_crisis() is now imported from agent.escalation
+# instead of being defined locally here. This file previously maintained
+# its own separate CRISIS_TERMS list (the original 22 phrases) that had
+# drifted out of sync with agent/escalation.py's expanded list (26
+# phrases, including Day 2's golden-set additions like "never going to
+# get better"). Found via real testing: a crisis phrase that should have
+# triggered escalation didn't, because this file's local copy never got
+# updated. Now there is exactly one source of truth for crisis detection.
 
 def show_crisis_resources():
     card("You don't have to face this alone — please reach out right now",
@@ -533,15 +538,18 @@ if st.session_state.step == 1:
             gmaps = googlemaps.Client(key=GOOGLE_MAPS_KEY)
             geocode_result = gmaps.geocode(location_input + ", New York City")
             if geocode_result:
-                loc = geocode_result[0]['geometry']['location']
-                formatted = geocode_result[0]['formatted_address']
-                st.session_state.user_lat = loc['lat']
-                st.session_state.user_lng = loc['lng']
-                st.session_state.borough = "detected"
-                card("📍 Location found", formatted, "green")
-                if st.button("Continue"):
-                    st.session_state.step = 2
-                    st.rerun()
+                if not is_in_nyc_scope(geocode_result[0]):
+                    card("Outside NYC", scope_check_message(), "amber")
+                else:
+                    loc = geocode_result[0]['geometry']['location']
+                    formatted = geocode_result[0]['formatted_address']
+                    st.session_state.user_lat = loc['lat']
+                    st.session_state.user_lng = loc['lng']
+                    st.session_state.borough = "detected"
+                    card("📍 Location found", formatted, "green")
+                    if st.button("Continue"):
+                        st.session_state.step = 2
+                        st.rerun()
             else:
                 card("Could not find that location", "Try a different neighbourhood or use the borough option below.", "amber")
         except Exception:
@@ -846,8 +854,52 @@ elif st.session_state.step == 7:
     if st.button("Get answer") and question:
         # Crisis check runs BEFORE any AI call — deterministic, never left to the model
         if is_crisis(question):
+            # Silent background escalation — the survivor only ever sees
+            # show_crisis_resources(); the Slack notification runs quietly
+            # underneath, since showing "you've been escalated" to someone
+            # in crisis could feel alarming rather than supportive.
+            try:
+                slack_result = post_escalation_to_slack(user_id="nextstep_session", reason=question, dry_run=False)
+                
+            except Exception as e:
+                
+                # Never let a Slack failure interrupt the survivor's
+                # experience — they must always see crisis resources
+                # regardless of whether the notification succeeded.
+                pass
             st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
             show_crisis_resources()
+        elif USE_RAG:
+            with st.spinner(""):
+                rag_result = search_kb_handler({"query": question})
+                chunks = rag_result.data["results"]
+                insufficient = rag_result.data["insufficient_context"]
+
+                context_text = "\n\n".join(
+                    f"[{c['citation']}] {c['text']}" for c in chunks
+                )
+
+                system_prompt = (
+                    "You are a compassionate trauma-informed guide helping a sexual assault survivor in New York City.\n\n"
+                    "Important principles:\n"
+                    "- Lead with belief and validation\n"
+                    "- Never pressure them to report to police; reporting is entirely their choice\n"
+                    "- Keep language warm, plain, and clear\n"
+                    "- Never judge any decision they make\n"
+                    "- Answer warmly and concisely. Be human. Be kind.\n\n"
+                    + GROUNDING_PROMPT
+                    + f"\n\nRetrieved context (insufficient_context={insufficient}):\n{context_text}"
+                )
+
+                client = anthropic.Anthropic(api_key=ANTHROPIC_KEY)
+                message = client.messages.create(
+                    model="claude-sonnet-4-6",
+                    max_tokens=1000,
+                    system=system_prompt,
+                    messages=[{"role": "user", "content": question}]
+                )
+            st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
+            card("", message.content[0].text)
         else:
             client = anthropic.Anthropic(api_key=ANTHROPIC_KEY)
 
