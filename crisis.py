@@ -1,17 +1,21 @@
 from dotenv import load_dotenv
 load_dotenv()
 
-from agent.scope_check import is_in_nyc_scope, scope_check_message
-from agent.escalation import is_crisis
+import os
+import uuid
 import streamlit as st
 import anthropic
 import googlemaps
 from datetime import datetime
 import math
 import urllib.parse
-from agent.rag_tool import search_kb_handler, GROUNDING_PROMPT
+
+from agent.scope_check import is_in_nyc_scope, scope_check_message
+from agent.escalation import is_crisis
+from agent.runtime import AgentRuntime, persist_trace
+from agent.rag_tool import search_kb_tool, GROUNDING_PROMPT
 from tools.slack_client import post_escalation_to_slack
-import os
+
 USE_RAG = True
 
 st.set_page_config(page_title="NextStep", page_icon="👣", layout="centered")
@@ -26,331 +30,50 @@ GOOGLE_MAPS_KEY = os.environ.get("GOOGLE_MAPS_KEY", "")
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-
-/* Global */
-html, body, [class*="css"] {
-    font-family: 'Inter', sans-serif;
-    background-color: #FDF6F0;
-    color: #2C1810;
-}
-
-/* Hide Streamlit branding */
-#MainMenu {visibility: hidden;}
-footer {visibility: hidden;}
-header {visibility: hidden;}
-
-/* Main container */
-.block-container {
-    max-width: 480px !important;
-    padding: 24px 20px !important;
-    margin: 0 auto;
-}
-
-/* Logo */
-.nextstep-logo {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 8px;
-}
-
-.nextstep-logo-text {
-    font-size: 28px;
-    font-weight: 700;
-    color: #2C1810;
-    letter-spacing: -0.5px;
-}
-
-.nextstep-logo-text span {
-    color: #C17B5A;
-}
-
-.nextstep-tagline {
-    font-size: 15px;
-    color: #6B4C3B;
-    line-height: 1.5;
-    margin-bottom: 24px;
-}
-
-/* Divider */
-.ns-divider {
-    height: 2px;
-    background: linear-gradient(to right, #C17B5A, #E8A87C, transparent);
-    border: none;
-    margin: 20px 0;
-}
-
-/* Section title */
-.ns-section-title {
-    font-size: 22px;
-    font-weight: 700;
-    color: #2C1810;
-    line-height: 1.3;
-    margin-bottom: 8px;
-}
-
-.ns-section-subtitle {
-    font-size: 15px;
-    color: #6B4C3B;
-    line-height: 1.6;
-    margin-bottom: 20px;
-}
-
-/* Cards */
-.ns-card {
-    background: #FFFFFF;
-    border-radius: 16px;
-    padding: 18px 20px;
-    margin-bottom: 12px;
-    box-shadow: 0 2px 12px rgba(193, 123, 90, 0.1);
-    border-left: 4px solid #C17B5A;
-}
-
-.ns-card-title {
-    font-size: 16px;
-    font-weight: 600;
-    color: #2C1810;
-    margin-bottom: 6px;
-}
-
-.ns-card-body {
-    font-size: 14px;
-    color: #6B4C3B;
-    line-height: 1.6;
-}
-
-.ns-card-body a {
-    color: #C17B5A;
-    text-decoration: none;
-    font-weight: 500;
-}
-
-/* Alert cards */
-.ns-alert-red {
-    background: #FFF0EE;
-    border-left: 4px solid #D94F3D;
-    border-radius: 16px;
-    padding: 18px 20px;
-    margin-bottom: 12px;
-}
-
-.ns-alert-green {
-    background: #F0F7F4;
-    border-left: 4px solid #7B9E87;
-    border-radius: 16px;
-    padding: 18px 20px;
-    margin-bottom: 12px;
-}
-
-.ns-alert-amber {
-    background: #FFF9EE;
-    border-left: 4px solid #E8C547;
-    border-radius: 16px;
-    padding: 18px 20px;
-    margin-bottom: 12px;
-}
-
-/* Buttons */
-.stButton > button {
-    background: #C17B5A !important;
-    color: white !important;
-    border: none !important;
-    border-radius: 12px !important;
-    padding: 14px 24px !important;
-    font-size: 16px !important;
-    font-weight: 600 !important;
-    font-family: 'Inter', sans-serif !important;
-    width: 100% !important;
-    min-height: 52px !important;
-    cursor: pointer !important;
-    transition: background 0.2s !important;
-    margin-bottom: 8px !important;
-}
-
-.stButton > button:hover {
-    background: #A66345 !important;
-}
-
-/* Secondary button style via key naming */
-[data-testid="baseButton-secondary"] > button {
-    background: #F5EDE8 !important;
-    color: #C17B5A !important;
-}
-
-/* Radio buttons */
-.stRadio > div {
-    gap: 8px !important;
-}
-
-.stRadio > div > label {
-    background: #FFFFFF;
-    border: 1.5px solid #E8D5CC;
-    border-radius: 12px;
-    padding: 14px 16px !important;
-    font-size: 15px !important;
-    color: #2C1810 !important;
-    cursor: pointer;
-    transition: border-color 0.2s;
-    width: 100%;
-    display: block;
-}
-
-.stRadio > div > label:hover {
-    border-color: #C17B5A;
-}
-
-/* Select box */
-.stSelectbox > div > div {
-    background: #FFFFFF;
-    border: 1.5px solid #E8D5CC;
-    border-radius: 12px;
-    font-size: 15px;
-}
-
-/* Text input */
-.stTextInput > div > div > input {
-    background: #FFFFFF;
-    border: 1.5px solid #E8D5CC;
-    border-radius: 12px;
-    padding: 14px 16px;
-    font-size: 15px;
-    font-family: 'Inter', sans-serif;
-}
-
-.stTextInput > div > div > input:focus {
-    border-color: #C17B5A;
-    box-shadow: 0 0 0 3px rgba(193, 123, 90, 0.15);
-}
-
-/* Text area */
-.stTextArea > div > div > textarea {
-    background: #FFFFFF;
-    border: 1.5px solid #E8D5CC;
-    border-radius: 12px;
-    padding: 14px 16px;
-    font-size: 15px;
-    font-family: 'Inter', sans-serif;
-}
-
-/* Metric */
-.stMetric {
-    background: #FFFFFF;
-    border-radius: 12px;
-    padding: 12px;
-    box-shadow: 0 2px 8px rgba(193, 123, 90, 0.08);
-    text-align: center;
-}
-
-/* Footer */
-.ns-footer {
-    background: #F5EDE8;
-    border-radius: 16px;
-    padding: 16px 20px;
-    margin-top: 24px;
-    text-align: center;
-}
-
-.ns-footer-hotline {
-    font-size: 17px;
-    font-weight: 700;
-    color: #C17B5A;
-    margin-bottom: 4px;
-}
-
-.ns-footer-sub {
-    font-size: 13px;
-    color: #6B4C3B;
-}
-
-.ns-disclaimer {
-    font-size: 11px;
-    color: #9B7B6B;
-    text-align: center;
-    margin-top: 16px;
-    line-height: 1.5;
-}
-
-/* Progress indicator */
-.ns-progress {
-    display: flex;
-    gap: 6px;
-    margin-bottom: 24px;
-}
-
-.ns-progress-dot {
-    height: 4px;
-    border-radius: 2px;
-    flex: 1;
-    background: #E8D5CC;
-}
-
-.ns-progress-dot.active {
-    background: #C17B5A;
-}
-
-/* Hospital card */
-.ns-hospital-card {
-    background: #FFFFFF;
-    border-radius: 16px;
-    padding: 20px;
-    margin-bottom: 16px;
-    box-shadow: 0 2px 12px rgba(193, 123, 90, 0.1);
-}
-
-.ns-hospital-name {
-    font-size: 17px;
-    font-weight: 700;
-    color: #2C1810;
-    margin-bottom: 6px;
-}
-
-.ns-hospital-detail {
-    font-size: 14px;
-    color: #6B4C3B;
-    margin-bottom: 4px;
-}
-
-.ns-directions-btn {
-    display: inline-block;
-    background: #C17B5A;
-    color: white !important;
-    text-decoration: none !important;
-    padding: 10px 16px;
-    border-radius: 10px;
-    font-size: 14px;
-    font-weight: 600;
-    margin-top: 10px;
-}
-
-/* Back link */
-.ns-back {
-    font-size: 14px;
-    color: #C17B5A;
-    cursor: pointer;
-    margin-bottom: 16px;
-    display: inline-block;
-}
-
-/* Quick exit button - always visible, top right */
-.ns-quick-exit {
-    position: fixed;
-    top: 12px;
-    right: 12px;
-    z-index: 9999;
-    background: #D94F3D;
-    color: white !important;
-    text-decoration: none !important;
-    padding: 10px 16px;
-    border-radius: 10px;
-    font-size: 14px;
-    font-weight: 700;
-    font-family: 'Inter', sans-serif;
-    box-shadow: 0 2px 8px rgba(217, 79, 61, 0.3);
-}
+html, body, [class*="css"] { font-family: 'Inter', sans-serif; background-color: #FDF6F0; color: #2C1810; }
+#MainMenu {visibility: hidden;} footer {visibility: hidden;} header {visibility: hidden;}
+.block-container { max-width: 480px !important; padding: 24px 20px !important; margin: 0 auto; }
+.nextstep-logo { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.nextstep-logo-text { font-size: 28px; font-weight: 700; color: #2C1810; letter-spacing: -0.5px; }
+.nextstep-logo-text span { color: #C17B5A; }
+.nextstep-tagline { font-size: 15px; color: #6B4C3B; line-height: 1.5; margin-bottom: 24px; }
+.ns-divider { height: 2px; background: linear-gradient(to right, #C17B5A, #E8A87C, transparent); border: none; margin: 20px 0; }
+.ns-section-title { font-size: 22px; font-weight: 700; color: #2C1810; line-height: 1.3; margin-bottom: 8px; }
+.ns-section-subtitle { font-size: 15px; color: #6B4C3B; line-height: 1.6; margin-bottom: 20px; }
+.ns-card { background: #FFFFFF; border-radius: 16px; padding: 18px 20px; margin-bottom: 12px; box-shadow: 0 2px 12px rgba(193, 123, 90, 0.1); border-left: 4px solid #C17B5A; }
+.ns-card-title { font-size: 16px; font-weight: 600; color: #2C1810; margin-bottom: 6px; }
+.ns-card-body { font-size: 14px; color: #6B4C3B; line-height: 1.6; }
+.ns-card-body a { color: #C17B5A; text-decoration: none; font-weight: 500; }
+.ns-alert-red { background: #FFF0EE; border-left: 4px solid #D94F3D; border-radius: 16px; padding: 18px 20px; margin-bottom: 12px; }
+.ns-alert-green { background: #F0F7F4; border-left: 4px solid #7B9E87; border-radius: 16px; padding: 18px 20px; margin-bottom: 12px; }
+.ns-alert-amber { background: #FFF9EE; border-left: 4px solid #E8C547; border-radius: 16px; padding: 18px 20px; margin-bottom: 12px; }
+.stButton > button { background: #C17B5A !important; color: white !important; border: none !important; border-radius: 12px !important; padding: 14px 24px !important; font-size: 16px !important; font-weight: 600 !important; font-family: 'Inter', sans-serif !important; width: 100% !important; min-height: 52px !important; cursor: pointer !important; transition: background 0.2s !important; margin-bottom: 8px !important; }
+.stButton > button:hover { background: #A66345 !important; }
+[data-testid="baseButton-secondary"] > button { background: #F5EDE8 !important; color: #C17B5A !important; }
+.stRadio > div { gap: 8px !important; }
+.stRadio > div > label { background: #FFFFFF; border: 1.5px solid #E8D5CC; border-radius: 12px; padding: 14px 16px !important; font-size: 15px !important; color: #2C1810 !important; cursor: pointer; transition: border-color 0.2s; width: 100%; display: block; }
+.stRadio > div > label:hover { border-color: #C17B5A; }
+.stSelectbox > div > div { background: #FFFFFF; border: 1.5px solid #E8D5CC; border-radius: 12px; font-size: 15px; }
+.stTextInput > div > div > input { background: #FFFFFF; border: 1.5px solid #E8D5CC; border-radius: 12px; padding: 14px 16px; font-size: 15px; font-family: 'Inter', sans-serif; }
+.stTextInput > div > div > input:focus { border-color: #C17B5A; box-shadow: 0 0 0 3px rgba(193, 123, 90, 0.15); }
+.stTextArea > div > div > textarea { background: #FFFFFF; border: 1.5px solid #E8D5CC; border-radius: 12px; padding: 14px 16px; font-size: 15px; font-family: 'Inter', sans-serif; }
+.stMetric { background: #FFFFFF; border-radius: 12px; padding: 12px; box-shadow: 0 2px 8px rgba(193, 123, 90, 0.08); text-align: center; }
+.ns-footer { background: #F5EDE8; border-radius: 16px; padding: 16px 20px; margin-top: 24px; text-align: center; }
+.ns-footer-hotline { font-size: 17px; font-weight: 700; color: #C17B5A; margin-bottom: 4px; }
+.ns-footer-sub { font-size: 13px; color: #6B4C3B; }
+.ns-disclaimer { font-size: 11px; color: #9B7B6B; text-align: center; margin-top: 16px; line-height: 1.5; }
+.ns-progress { display: flex; gap: 6px; margin-bottom: 24px; }
+.ns-progress-dot { height: 4px; border-radius: 2px; flex: 1; background: #E8D5CC; }
+.ns-progress-dot.active { background: #C17B5A; }
+.ns-hospital-card { background: #FFFFFF; border-radius: 16px; padding: 20px; margin-bottom: 16px; box-shadow: 0 2px 12px rgba(193, 123, 90, 0.1); }
+.ns-hospital-name { font-size: 17px; font-weight: 700; color: #2C1810; margin-bottom: 6px; }
+.ns-hospital-detail { font-size: 14px; color: #6B4C3B; margin-bottom: 4px; }
+.ns-directions-btn { display: inline-block; background: #C17B5A; color: white !important; text-decoration: none !important; padding: 10px 16px; border-radius: 10px; font-size: 14px; font-weight: 600; margin-top: 10px; }
+.ns-back { font-size: 14px; color: #C17B5A; cursor: pointer; margin-bottom: 16px; display: inline-block; }
+.ns-quick-exit { position: fixed; top: 12px; right: 12px; z-index: 9999; background: #D94F3D; color: white !important; text-decoration: none !important; padding: 10px 16px; border-radius: 10px; font-size: 14px; font-weight: 700; font-family: 'Inter', sans-serif; box-shadow: 0 2px 8px rgba(217, 79, 61, 0.3); }
 .ns-quick-exit:hover { background: #B83A2A; }
 </style>
 """, unsafe_allow_html=True)
-
 
 # ── Hospital Data ─────────────────────────────────────────────────────────────
 
@@ -406,15 +129,8 @@ SAFE_PLACES = {
 }
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
-#
-# NOTE (Day 5 fix): is_crisis() is now imported from agent.escalation
-# instead of being defined locally here. This file previously maintained
-# its own separate CRISIS_TERMS list (the original 22 phrases) that had
-# drifted out of sync with agent/escalation.py's expanded list (26
-# phrases, including Day 2's golden-set additions like "never going to
-# get better"). Found via real testing: a crisis phrase that should have
-# triggered escalation didn't, because this file's local copy never got
-# updated. Now there is exactly one source of truth for crisis detection.
+# is_crisis() is imported from agent.escalation — exactly one source of
+# truth for crisis detection, no local duplicate list (Day 5 fix).
 
 def show_crisis_resources():
     card("You don't have to face this alone — please reach out right now",
@@ -649,7 +365,6 @@ elif st.session_state.step == 3:
             except:
                 card("Nearest safe places", "Go into any open pharmacy, deli, or subway station you can see nearby.", "default")
         else:
-            # Fallback: show verified borough safe places when live location isn't available
             borough = st.session_state.borough
             if borough and borough in SAFE_PLACES:
                 for place in SAFE_PLACES[borough]:
@@ -851,36 +566,42 @@ elif st.session_state.step == 7:
 
     question = st.text_area("", placeholder="What's on your mind?", label_visibility="collapsed")
 
+    # ── Day 6 real integration ──────────────────────────────────────────
+    # RAG path now genuinely runs through AgentRuntime.run() with search_kb
+    # registered as a real tool — real orchestration, not two functions
+    # called directly. Crisis path deliberately stays deterministic (no
+    # LLM call — Day 1 principle) but now gets a real request_id and a
+    # real persisted, replayable trace via persist_trace().
+
     if st.button("Get answer") and question:
-        # Crisis check runs BEFORE any AI call — deterministic, never left to the model
         if is_crisis(question):
-            # Silent background escalation — the survivor only ever sees
-            # show_crisis_resources(); the Slack notification runs quietly
-            # underneath, since showing "you've been escalated" to someone
-            # in crisis could feel alarming rather than supportive.
+            request_id = str(uuid.uuid4())
             try:
                 slack_result = post_escalation_to_slack(user_id="nextstep_session", reason=question, dry_run=False)
-                
-            except Exception as e:
-                
-                # Never let a Slack failure interrupt the survivor's
-                # experience — they must always see crisis resources
-                # regardless of whether the notification succeeded.
-                pass
+                escalation_ok = slack_result.ok
+            except Exception:
+                escalation_ok = False
+
+            persist_trace(
+                request_id,
+                question,
+                {
+                    "answer": "crisis_resources_shown",
+                    "trace": [{"event": "deterministic_crisis_escalation", "slack_ok": escalation_ok}],
+                    "request_id": request_id,
+                },
+            )
+
             st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
             show_crisis_resources()
+
         elif USE_RAG:
-            with st.spinner(""):
-                rag_result = search_kb_handler({"query": question})
-                chunks = rag_result.data["results"]
-                insufficient = rag_result.data["insufficient_context"]
-
-                context_text = "\n\n".join(
-                    f"[{c['citation']}] {c['text']}" for c in chunks
-                )
-
-                system_prompt = (
-                    "You are a compassionate trauma-informed guide helping a sexual assault survivor in New York City.\n\n"
+            qa_agent = AgentRuntime(
+                model="claude-sonnet-4-6",
+                tools={"search_kb": search_kb_tool},
+                system=(
+                    "You are a compassionate trauma-informed guide helping a sexual "
+                    "assault survivor in New York City.\n\n"
                     "Important principles:\n"
                     "- Lead with belief and validation\n"
                     "- Never pressure them to report to police; reporting is entirely their choice\n"
@@ -888,18 +609,16 @@ elif st.session_state.step == 7:
                     "- Never judge any decision they make\n"
                     "- Answer warmly and concisely. Be human. Be kind.\n\n"
                     + GROUNDING_PROMPT
-                    + f"\n\nRetrieved context (insufficient_context={insufficient}):\n{context_text}"
-                )
+                ),
+                max_turns=4,
+                allow_side_effects=False,
+            )
+            with st.spinner(""):
+                result = qa_agent.run(question)
 
-                client = anthropic.Anthropic(api_key=ANTHROPIC_KEY)
-                message = client.messages.create(
-                    model="claude-sonnet-4-6",
-                    max_tokens=1000,
-                    system=system_prompt,
-                    messages=[{"role": "user", "content": question}]
-                )
             st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
-            card("", message.content[0].text)
+            card("", result.get("answer", "I wasn't able to complete that — please try again."))
+
         else:
             client = anthropic.Anthropic(api_key=ANTHROPIC_KEY)
 

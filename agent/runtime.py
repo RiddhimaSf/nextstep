@@ -11,6 +11,39 @@ ANTHROPIC_KEY = os.environ.get("ANTHROPIC_KEY", "")
 TRACE_LOG_PATH = "logs/traces.jsonl"
 
 
+def persist_trace(request_id: str, user_msg: str, result: dict) -> None:
+    """
+    Standalone trace persistence, usable both by AgentRuntime.run() (the
+    RAG/Q&A path, real tool-calling orchestration) and by deterministic
+    paths outside the agent loop (e.g. crisis.py's crisis-escalation
+    branch) that intentionally do NOT go through run(), since that
+    decision must stay deterministic, not model-judgment-based — see
+    Day 1 design principle. Both paths still get a real request ID and
+    a real, replayable trace, closing the observability gap without
+    forcing the deterministic safety path into the LLM loop it was
+    deliberately built to avoid.
+
+    Writes to logs/traces.jsonl AND prints to stdout with a "TRACE_LOG:"
+    prefix — see the docstring history: the stdout copy exists because
+    Render's free-tier filesystem is ephemeral, so the file alone does
+    not survive a restart on the deployed instance, but Render's log
+    viewer captures stdout regardless.
+    """
+    os.makedirs(os.path.dirname(TRACE_LOG_PATH), exist_ok=True)
+    log_entry = {
+        "request_id": request_id,
+        "timestamp": time.time(),
+        "user_msg": user_msg,
+        "result": result,
+    }
+    log_line = json.dumps(log_entry)
+
+    with open(TRACE_LOG_PATH, "a") as f:
+        f.write(log_line + "\n")
+
+    print(f"TRACE_LOG: {log_line}")
+
+
 @dataclass
 class ToolResult:
     ok: bool
@@ -70,7 +103,7 @@ class AgentRuntime:
             if response["type"] == "final_answer":
                 trace.append({"event": "final", "turn": turn, "content": response["content"]})
                 result = {"answer": response["content"], "trace": trace, "request_id": request_id}
-                self._persist_trace(request_id, user_msg, result)
+                persist_trace(request_id, user_msg, result)
                 return result
 
             elif response["type"] == "tool_call":
@@ -175,51 +208,16 @@ class AgentRuntime:
                             "reason": result.error_code,
                         })
                         result = {"answer": summary, "trace": trace, "recovered_from_failure": True, "request_id": request_id}
-                        self._persist_trace(request_id, user_msg, result)
+                        persist_trace(request_id, user_msg, result)
                         return result
                 else:
                     tool_failure_counts[tool_name] = 0
 
         trace.append({"event": "max_turns_exceeded", "max_turns": self.max_turns})
         result = {"error": "max_turns_exceeded", "trace": trace, "request_id": request_id}
-        self._persist_trace(request_id, user_msg, result)
+        persist_trace(request_id, user_msg, result)
         return result
 
-    def _persist_trace(self, request_id: str, user_msg: str, result: dict) -> None:
-        """
-        Day 6: append this run's full trace as one JSON line to a log
-        file, keyed by request_id, so it can be looked up and replayed
-        later — the core capability behind "paste a request ID and
-        replay the session" rather than just printing to stdout and
-        losing it once the process moves on.
-
-        One JSON line per request, appended to a file — not a database.
-        Matches the same "boring, right-sized infrastructure" principle
-        applied throughout this sprint (Chroma over a managed vector DB,
-        a flat file over Postgres for idempotency keys): the actual need
-        here is a simple key -> value lookup at small, single-developer
-        scale, which a JSONL file serves perfectly well.
-        """
-        os.makedirs(os.path.dirname(TRACE_LOG_PATH), exist_ok=True)
-        log_entry = {
-            "request_id": request_id,
-            "timestamp": time.time(),
-            "user_msg": user_msg,
-            "result": result,
-        }
-        log_line = json.dumps(log_entry)
-
-        with open(TRACE_LOG_PATH, "a") as f:
-            f.write(log_line + "\n")
-
-        # Day 6 fix: also print to stdout, greppable via a "TRACE_LOG:"
-        # prefix. Render's free tier has an ephemeral filesystem, so the
-        # file above does not survive a restart on the deployed instance
-        # — but Render's log viewer captures stdout regardless of disk
-        # persistence, making this the real, free trace sink for the
-        # live deployed app. The file-based store above is unchanged and
-        # still used for local/Docker print_trace()/get_trace() lookups.
-        print(f"TRACE_LOG: {log_line}")
 
     def _validate_args(self, tool: Tool, args: dict) -> str | None:
         required = tool.parameters.get("required", [])
