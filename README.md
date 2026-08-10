@@ -94,6 +94,14 @@ from agent.runtime import print_trace
 print_trace("the-request-id")
 ```
 
+### Trace persistence: local vs. deployed
+
+Structured JSON logs (`logs/traces.jsonl`) are written per-request but do not survive Render free-tier restarts (ephemeral filesystem). Fix is either a paid persistent disk or an external sink (Postgres/Logtail/etc.) — not implemented, matching infra spend to a demo deployment, not a production one.
+
+**Trace replay works fully in local Docker** (`docker run -p 8501:8501 --env-file .env nextstep`), where `print_trace(request_id)` reads the persisted file directly.
+
+**On the live deployed instance**, every trace is *also* printed to stdout with a `TRACE_LOG:` prefix, in the same JSON shape as the file. Render's log viewer captures stdout regardless of disk persistence, so a specific request's trace can be found by searching Render's dashboard logs for its request ID — a free, no-infra-change way to recover a trace on the deployed app, short of full local-style replay. Citation tags in each answer (e.g. `[hospital_directory#bellevue_hospital_center]`) are the additional, always-visible evidence that a given deployed response is genuinely grounded, independent of log access.
+
 ## Limitations, named honestly
 
 - **Escalation coverage is incomplete.** The deterministic phrase list (26 phrases) does not generalize to paraphrased crisis language — measured directly: an expanded 15-case golden set passed only 8/15 (53%) on first real testing. A negation false-positive was also found ("I am not saying I want to hurt myself" incorrectly triggered, since substring matching has no concept of negation). Documented, not hidden — see `docs/SPEC.md`.

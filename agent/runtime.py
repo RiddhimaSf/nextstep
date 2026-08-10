@@ -207,8 +207,19 @@ class AgentRuntime:
             "user_msg": user_msg,
             "result": result,
         }
+        log_line = json.dumps(log_entry)
+
         with open(TRACE_LOG_PATH, "a") as f:
-            f.write(json.dumps(log_entry) + "\n")
+            f.write(log_line + "\n")
+
+        # Day 6 fix: also print to stdout, greppable via a "TRACE_LOG:"
+        # prefix. Render's free tier has an ephemeral filesystem, so the
+        # file above does not survive a restart on the deployed instance
+        # — but Render's log viewer captures stdout regardless of disk
+        # persistence, making this the real, free trace sink for the
+        # live deployed app. The file-based store above is unchanged and
+        # still used for local/Docker print_trace()/get_trace() lookups.
+        print(f"TRACE_LOG: {log_line}")
 
     def _validate_args(self, tool: Tool, args: dict) -> str | None:
         required = tool.parameters.get("required", [])
