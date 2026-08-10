@@ -618,6 +618,11 @@ elif st.session_state.step == 7:
 
             st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
             card("", result.get("answer", "I wasn't able to complete that — please try again."))
+            st.markdown(
+                f"<div style='font-size:11px;color:#9B7B6B;margin-top:4px;'>request ID: {result.get('request_id', 'n/a')}</div>",
+                unsafe_allow_html=True
+            )
+
 
         else:
             client = anthropic.Anthropic(api_key=ANTHROPIC_KEY)
@@ -646,6 +651,8 @@ elif st.session_state.step == 7:
                 )
             st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
             card("", message.content[0].text)
+            
+            
 
     back_button(6)
 
