@@ -1,96 +1,116 @@
-# 👣 NextStep
+# NextStep
 
-**A trauma-informed guide for sexual assault survivors in New York City.**
+**Live demo:** https://nextstep-9ppb.onrender.com
+*(Free-tier hosting — the app spins down after 15 minutes of inactivity. First load after idle time can take 30-60 seconds. A GitHub Actions workflow pings it every 10 minutes to reduce this, but it is not guaranteed.)*
 
-🔗 **Live at [nextstep-nyc.streamlit.app](https://nextstep-nyc.streamlit.app)**
+## Problem
 
----
+Sexual assault survivors in New York City need immediate, trustworthy guidance on what to do next — without figuring it out alone in the immediate aftermath of trauma. The current default is calling a hotline or going straight to a hospital or police station, often without knowing whether that hospital has SANE (Sexual Assault Nurse Examiner) staff on hand, or what to expect once there.
 
-## The problem
+NextStep is a trauma-informed guide that walks a survivor through immediate safety, medical care, and next steps — grounded entirely in verified NYC resources, never inventing information, and with a deterministic safety layer that never depends on a language model's judgment for the moment that matters most.
 
-When someone experiences sexual assault, the first hour is the hardest. Existing resources — hotlines, websites, resource pages — provide information but require survivors to navigate it themselves. In a moment of shock and trauma, that navigation is often impossible.
+## Architecture
 
-NextStep is different. It asks the questions so survivors don't have to figure out what to ask. One step at a time, it guides them through exactly what to do — without pressure, without judgment, and without requiring them to already know what their options are.
+```mermaid
+flowchart TD
+    U[Survivor] --> UI[Streamlit UI - crisis.py]
+    UI --> LOC[Location step]
+    LOC --> SCOPE{In NYC scope?}
+    SCOPE -->|No| OUT[Outside-NYC message]
+    SCOPE -->|Yes| SAFETY[Safety-check dropdown]
+    SAFETY --> HOSP[SANE hospital lookup - Google Maps API]
+    HOSP --> INFO[What-to-expect + resource menu]
+    INFO --> Q[Open question box]
 
----
+    Q --> CRISIS{is_crisis check\ndeterministic, English phrase list}
+    CRISIS -->|Match| SLACK[Silent Slack escalation\nvia ResilientClient]
+    CRISIS -->|Match| CARDS[show_crisis_resources\nsurvivor-facing]
+    SLACK --> LOG1[(logs/traces.jsonl)]
 
-## What it does
+    CRISIS -->|No match| RAG[search_kb tool]
+    RAG --> CHROMA[(Chroma vector store\nlocal, 46 chunks)]
+    CHROMA --> SCORE{Score >= threshold?}
+    SCORE -->|No| INSUFF[INSUFFICIENT_CONTEXT]
+    SCORE -->|Yes| CLAUDE[Claude: grounded, cited answer]
+    CLAUDE --> LOG2[(logs/traces.jsonl)]
 
-NextStep guides survivors through a structured flow based on their specific situation:
+    subgraph Agent Loop [agent/runtime.py - AgentRuntime]
+        RAG
+        CRISIS
+    end
 
-- **Are you safe right now?** — If not, shows nearest safe places with walking directions
-- **Is the perpetrator still nearby?** — Routes to 911 guidance or hospital guidance accordingly
-- **Nearest certified SAFE hospital** — Based on real-time location, with walking, driving, and transit times and one-tap Google Maps directions
-- **What to expect at the hospital** — Step by step guidance on the forensic exam process
-- **Support resources** — Legal options, counselling, financial assistance, with working links
-- **AI-powered Q&A** — Survivors can ask any question and receive a compassionate, trauma-informed response
+    style SLACK fill:#f9d5d3
+    style CARDS fill:#f9d5d3
+    style CHROMA fill:#d3e5f9
+```
 
-RAINN's hotline (1-800-656-4673) is visible on every single screen.
+**Key design decisions, made deliberately, not defaulted into:**
+- **Crisis detection is deterministic** (`agent/escalation.py`, substring match against a maintained phrase list), never left to the model — the same reasoning applied throughout: a missed safety signal is a categorically worse failure than a missed retrieval.
+- **RAG is dense-only**, no hybrid/BM25 — the knowledge base is ~46 well-defined chunks, a scale where hybrid search solves a problem that doesn't exist here.
+- **Escalation notifications are silent** — the survivor only ever sees `show_crisis_resources()`; the Slack post to the team happens invisibly in the background, wrapped in try/except so a Slack failure never blocks or delays the survivor's actual experience.
+- **Vector store is local Chroma**, not a managed service — no separate server to orchestrate, consistent with the actual scale of a ~46-chunk corpus.
 
----
+## How to run
 
-## How it's built
+**Locally (Docker):**
+```
+docker build -t nextstep .
+docker run -p 8501:8501 --env-file .env nextstep
+```
+Open http://localhost:8501
 
-| Layer | Technology |
-|-------|-----------|
-| Frontend | Streamlit |
-| AI layer | Anthropic Claude API |
-| Location | Google Maps Geocoding API |
-| Directions | Google Maps Directions API |
-| Hospital data | NY State Department of Health — SAFE Designated Hospitals |
-| Hosting | Streamlit Cloud |
-
----
-
-## Hospital data
-
-All 20 hospitals shown in NextStep are verified SAFE Designated Hospitals from the official [New York State Department of Health database](https://profiles.health.ny.gov/Hospital/designated_center/SAFE+Designated+Hospital). SAFE designation means the hospital has trained Sexual Assault Nurse Examiners (SANEs) available 24/7 and follows certified protocols for forensic examination and survivor care.
-
----
-
-## Key design decisions
-
-**Guided not informational** — Every existing resource gives survivors information and asks them to navigate it. NextStep makes decisions for someone who cannot make decisions right now.
-
-**No pressure to report** — The tool never pushes survivors toward reporting to police. Reporting is presented as one option among many, always the survivor's choice.
-
-**Forensic exam is free** — Under federal law (VAWA) survivors cannot be billed for a forensic exam. This is stated clearly and repeatedly because cost is a documented barrier to seeking care.
-
-**Evidence kit storage** — Survivors who choose not to report are told their kit is stored for at least 6 months. They do not have to decide anything immediately.
-
-**RAINN always visible** — The national hotline appears at the bottom of every screen regardless of where the user is in the flow.
-
----
-
-## Running locally
-
-```bash
-git clone https://github.com/RiddhimaSf/nextstep.git
-cd nextstep
+**Locally (without Docker):**
+```
 pip install -r requirements.txt
+python -m streamlit run crisis.py
 ```
 
-Create a `.streamlit/secrets.toml` file:
-
-```toml
-ANTHROPIC_KEY = "your_anthropic_key"
-GOOGLE_MAPS_KEY = "your_google_maps_key"
+**Required environment variables** (`.env`, gitignored, never committed):
+```
+ANTHROPIC_KEY=
+GOOGLE_MAPS_KEY=
+SLACK_BOT_TOKEN=
+SLACK_CHANNEL_ID=
 ```
 
-Then run:
+## Demo script
 
-```bash
-streamlit run crisis.py
+Three prompts that reliably demonstrate the three real capabilities built this sprint. Reach the open question box via: location → safety check → hospital step → "Continue" through to the resource screen.
+
+**1. Grounded, cited answer** — "Does Bellevue Hospital have a SANE nurse?"
+Expected: a specific, factual answer citing `[hospital_directory#bellevue_hospital_center]`, sourced from the real hospital directory, not the model's general knowledge.
+
+**2. Refusal — out of scope** — "I'm in Connecticut, what SANE hospitals are near me?"
+Expected: `INSUFFICIENT_CONTEXT`, explicitly stating NextStep only covers NYC, with no invented out-of-scope organization named.
+
+**3. Crisis escalation (safety layer)** — "This is never going to get better"
+Expected: the survivor sees only warm crisis resources (988, Safe Horizon, RAINN) — no visible sign of escalation. Behind the scenes, a real message posts to the team's Slack channel with a request ID. If something looks wrong afterward, the request ID printed in `logs/traces.jsonl` can be pasted into `print_trace(request_id)` to replay the exact session — this is the actual answer to "what happens if the demo gives a wrong answer": pull the trace, not apologize.
+
+## Trace replay (for debugging live, including in an interview)
+
+Every agent run gets a unique request ID and a full structured trace persisted to `logs/traces.jsonl`. To replay any session:
+```python
+from agent.runtime import print_trace
+print_trace("the-request-id")
 ```
 
----
+## Limitations, named honestly
 
-## Disclaimer
+- **Escalation coverage is incomplete.** The deterministic phrase list (26 phrases) does not generalize to paraphrased crisis language — measured directly: an expanded 15-case golden set passed only 8/15 (53%) on first real testing. A negation false-positive was also found ("I am not saying I want to hurt myself" incorrectly triggered, since substring matching has no concept of negation). Documented, not hidden — see `docs/SPEC.md`.
+- **English only.** This is a stated safety limitation, not just a missing feature: the crisis-detection layer only recognizes English phrases, so responding in another language could mean a real crisis message goes undetected.
+- **NYC only.** By design — the corpus (hospitals, legal process, financial assistance) is NYC-specific. Confirmed working: a non-NYC location correctly triggers an explicit out-of-scope message rather than silently returning irrelevant results.
+- **Idempotency store has a real, untested-for race condition.** The file-based idempotency check (`sent_escalation_keys.txt`) is not atomic — under concurrent calls, two near-simultaneous requests could theoretically both pass the "already sent" check before either writes. Not hit in testing, but not mitigated.
+- **Free-tier hosting cold starts.** See the note at the top of this file.
+- **`search_kb` is wired into the live app; the full multi-tool `AgentRuntime` (Slack, `check_crisis`, `escalate_case` as a formal tool) is currently only exercised through the test harness (`agent/test_runtime.py`), not the live conversational flow** — the live app calls `search_kb` and Slack directly rather than through the full agent loop.
 
-NextStep is an independent resource and is not affiliated with RAINN, Safe Horizon, NYC Well, or any other organisation listed. All organisations are referenced for informational purposes only. This tool does not constitute legal, medical, or professional advice. If you are in immediate danger please call 911.
+## Cost notes
 
----
+- **Claude (Sonnet)**: cost per request is not yet instrumented — a named, open item since Day 2. Expected mid-range cost tier given the model choice; real measurement is the next step, not a number claimed here without evidence.
+- **Google Maps API**: pay-per-call beyond a free monthly credit; low-volume demo usage stays within Google's free tier in practice.
+- **Slack**: free for this usage pattern (a single bot posting to one channel).
+- **Hosting (Render)**: $0/month, free tier, no credit card required. Tradeoff: cold starts after 15 minutes idle (mitigated, not eliminated, by the GitHub Actions keep-alive workflow).
+- **Chroma**: local, embedded, no cost — no managed vector database service in use.
 
-## Built by
+## Built during a 14-day FDE portfolio sprint
 
-Riddhima Saraf — [ras10052@nyu.edu](mailto:ras10052@nyu.edu) — NYU Class of 2025
+Each day's real decisions, bugs found and fixed (including at least one wrong fix caught by re-testing, and one real security incident — an exposed API key found by GitHub's push protection, fully resolved), and honest open items are documented in full in `docs/SPEC.md`, alongside `docs/resilience.md` for the Day 5 chaos-testing results.
