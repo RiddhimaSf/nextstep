@@ -24,7 +24,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Now copy the actual application code.
 COPY . .
-
+RUN python -m rag.ingest
 # Ensure the non-root user owns the app directory (needed since files
 # were copied in as root before the USER switch below).
 RUN chown -R appuser:appuser /app
