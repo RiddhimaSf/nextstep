@@ -36,7 +36,7 @@ def search_kb(query: str, k: int = 6, filters: dict | None = None) -> list[dict]
         name="nextstep_kb",
         metadata={"hnsw:space": "cosine"},
     )
-    print(f"DEBUG: collection has {collection.count()} items")
+    
 
 
     where_clause = None
