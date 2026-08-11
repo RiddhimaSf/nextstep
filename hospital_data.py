@@ -1,0 +1,68 @@
+"""
+HOSPITALS and SAFE_PLACES, extracted into their own module.
+
+Day 6 fix: previously these lived inside crisis.py, and rag/ingest.py
+imported them from there. That created a circular problem once
+crisis.py gained a startup assertion checking the vector store isn't
+empty (see the empty-vector-store fix) — importing crisis.py (just to
+read this data) during the Docker build's `rag/ingest.py` step
+triggered that assertion, and it correctly failed, since the vector
+store IS empty at that exact moment (ingestion hasn't run yet). This
+broke the build entirely: ingest.py needs this data, but importing it
+ran a check that only makes sense after ingestion completes.
+
+Fix: this data now lives in its own file with no other dependencies,
+so rag/ingest.py can read it without ever importing crisis.py (and
+therefore never triggering crisis.py's startup check during the build).
+"""
+
+HOSPITALS = [
+    {"name": "Bellevue Hospital Center", "address": "462 First Avenue, New York, NY 10016", "phone": "(212) 562-4132", "borough": "Manhattan", "lat": 40.7388717, "lng": -73.9752894},
+    {"name": "Harlem Hospital Center", "address": "506 Lenox Avenue, New York, NY 10037", "phone": "(212) 939-1000", "borough": "Manhattan", "lat": 40.8141451, "lng": -73.9404473},
+    {"name": "Metropolitan Hospital Center", "address": "1901 First Avenue, New York, NY 10029", "phone": "(212) 423-8993", "borough": "Manhattan", "lat": 40.7852328, "lng": -73.9450290},
+    {"name": "Mount Sinai Hospital", "address": "One Gustave L Levy Place, New York, NY 10029", "phone": "(212) 241-7005", "borough": "Manhattan", "lat": 40.7888899, "lng": -73.9540398},
+    {"name": "Mount Sinai Morningside", "address": "1111 Amsterdam Avenue, New York, NY 10025", "phone": "(212) 523-4295", "borough": "Manhattan", "lat": 40.8054067, "lng": -73.9613307},
+    {"name": "NewYork-Presbyterian Columbia", "address": "622 West 168th Street, New York, NY 10032", "phone": "(212) 305-2500", "borough": "Manhattan", "lat": 40.8413257, "lng": -73.9407077},
+    {"name": "NewYork-Presbyterian Weill Cornell", "address": "525 East 68th Street, New York, NY 10021", "phone": "(212) 746-5454", "borough": "Manhattan", "lat": 40.7648658, "lng": -73.9539836},
+    {"name": "Northwell Greenwich Village Hospital", "address": "30 Seventh Avenue, New York, NY 10011", "phone": "(516) 465-8018", "borough": "Manhattan", "lat": 40.7378021, "lng": -74.0009090},
+    {"name": "Kings County Hospital Center", "address": "451 Clarkson Avenue, Brooklyn, NY 11203", "phone": "(718) 245-3901", "borough": "Brooklyn", "lat": 40.6568816, "lng": -73.9447075},
+    {"name": "NewYork-Presbyterian Brooklyn Methodist", "address": "506 Sixth Street, Brooklyn, NY 11215", "phone": "(718) 780-3101", "borough": "Brooklyn", "lat": 40.6678820, "lng": -73.9791462},
+    {"name": "NYU Langone Hospital Brooklyn", "address": "150 55th Street, Brooklyn, NY 11220", "phone": "(718) 630-7300", "borough": "Brooklyn", "lat": 40.6468695, "lng": -74.0211488},
+    {"name": "South Brooklyn Health", "address": "2601 Ocean Parkway, Brooklyn, NY 11235", "phone": "(718) 616-3000", "borough": "Brooklyn", "lat": 40.5855850, "lng": -73.9648285},
+    {"name": "Woodhull Medical Center", "address": "760 Broadway, Brooklyn, NY 11206", "phone": "(718) 963-8101", "borough": "Brooklyn", "lat": 40.6996243, "lng": -73.9430489},
+    {"name": "Elmhurst Hospital Center", "address": "79-01 Broadway, Elmhurst, NY 11373", "phone": "(718) 334-4000", "borough": "Queens", "lat": 40.7450814, "lng": -73.8857797},
+    {"name": "NewYork-Presbyterian Queens", "address": "56-45 Main Street, Flushing, NY 11355", "phone": "(718) 670-2000", "borough": "Queens", "lat": 40.7468043, "lng": -73.8249338},
+    {"name": "Queens Hospital Center", "address": "82-68 164th Street, Jamaica, NY 11432", "phone": "(718) 883-2350", "borough": "Queens", "lat": 40.7181228, "lng": -73.8047780},
+    {"name": "Jacobi Medical Center", "address": "1400 Pelham Parkway, Bronx, NY 10461", "phone": "(718) 918-5000", "borough": "Bronx", "lat": 40.8554628, "lng": -73.8458118},
+    {"name": "Lincoln Medical Center", "address": "234 East 149th Street, Bronx, NY 10451", "phone": "(718) 579-5700", "borough": "Bronx", "lat": 40.8168282, "lng": -73.9235492},
+    {"name": "North Central Bronx Hospital", "address": "3424 Kossuth Avenue, Bronx, NY 10467", "phone": "(718) 519-3500", "borough": "Bronx", "lat": 40.8804138, "lng": -73.8810488},
+    {"name": "Richmond University Medical Center", "address": "355 Bard Avenue, Staten Island, NY 10310", "phone": "(718) 818-1234", "borough": "Staten Island", "lat": 40.6356031, "lng": -74.1055743},
+]
+
+SAFE_PLACES = {
+    "Manhattan": [
+        {"name": "NYC Family Justice Center – Manhattan (Safe Horizon advocates on-site)", "address": "80 Centre St, Manhattan", "phone": "212-602-2800", "type": "Family Justice Center", "hours": "Mon–Fri 9am–5pm"},
+        {"name": "Bellevue Hospital ER", "address": "462 First Avenue, Manhattan", "phone": "(212) 562-4132", "type": "Hospital", "hours": "24/7"},
+        {"name": "NYPD 17th Precinct", "address": "167 E 51st St, Manhattan", "phone": "212-826-3211", "type": "Police", "hours": "24/7"},
+    ],
+    "Brooklyn": [
+        {"name": "NYC Family Justice Center – Brooklyn (Safe Horizon advocates on-site)", "address": "350 Jay St, 14th Floor, Brooklyn", "phone": "718-250-5113", "type": "Family Justice Center", "hours": "Mon–Fri 9am–5pm"},
+        {"name": "Kings County Hospital ER", "address": "451 Clarkson Ave, Brooklyn", "phone": "(718) 245-3901", "type": "Hospital", "hours": "24/7"},
+        {"name": "NYPD 84th Precinct", "address": "301 Gold St, Brooklyn", "phone": "718-875-6811", "type": "Police", "hours": "24/7"},
+    ],
+    "Queens": [
+        {"name": "NYC Family Justice Center – Queens (Safe Horizon advocates on-site)", "address": "126-02 82nd Ave, Kew Gardens, Queens", "phone": "718-575-4545", "type": "Family Justice Center", "hours": "Mon–Fri 9am–5pm"},
+        {"name": "Elmhurst Hospital ER", "address": "79-01 Broadway, Queens", "phone": "(718) 334-4000", "type": "Hospital", "hours": "24/7"},
+        {"name": "NYPD 109th Precinct", "address": "37-05 Union St, Queens", "phone": "718-321-2250", "type": "Police", "hours": "24/7"},
+    ],
+    "Bronx": [
+        {"name": "NYC Family Justice Center – Bronx (Safe Horizon advocates on-site)", "address": "198 E 161st St, 2nd Floor, Bronx", "phone": "718-508-1220", "type": "Family Justice Center", "hours": "Mon–Fri 9am–5pm"},
+        {"name": "Lincoln Medical Center ER", "address": "234 East 149th Street, Bronx", "phone": "(718) 579-5700", "type": "Hospital", "hours": "24/7"},
+        {"name": "NYPD 40th Precinct", "address": "257 Alexander Ave, Bronx", "phone": "718-402-2270", "type": "Police", "hours": "24/7"},
+    ],
+    "Staten Island": [
+        {"name": "NYC Family Justice Center – Staten Island (Safe Horizon advocates on-site)", "address": "126 Stuyvesant Pl, Staten Island", "phone": "718-697-4300", "type": "Family Justice Center", "hours": "Mon–Fri 9am–5pm"},
+        {"name": "Richmond University Medical Center ER", "address": "355 Bard Avenue, Staten Island", "phone": "(718) 818-1234", "type": "Hospital", "hours": "24/7"},
+        {"name": "NYPD 120th Precinct", "address": "78 Richmond Terrace, Staten Island", "phone": "718-876-8500", "type": "Police", "hours": "24/7"},
+    ],
+}

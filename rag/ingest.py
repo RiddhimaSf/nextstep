@@ -324,7 +324,7 @@ def embed_and_upsert(chunks: list[Chunk], collection_name: str = "nextstep_kb") 
 if __name__ == "__main__":
     import sys
     sys.path.insert(0, ".")
-    from crisis import HOSPITALS, SAFE_PLACES
+    from hospital_data import HOSPITALS, SAFE_PLACES
 
     include_tests = "--with-test-chunks" in sys.argv
     corpus = build_corpus(HOSPITALS, SAFE_PLACES, include_test_chunks=include_tests)
