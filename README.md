@@ -3,7 +3,7 @@
 **Live demo:** https://nextstep-9ppb.onrender.com
 *(Free-tier hosting — the app spins down after 15 minutes of inactivity. First load after idle time can take 30-60 seconds. A GitHub Actions workflow pings it every 10 minutes to reduce this, but it is not guaranteed.)*
 
-**90-second demo video:** [add Loom link here]
+**90-second demo video:** https://www.loom.com/share/e24d6fbf0ca644b5913c544f6f53eb12
 *(Happy path with real tool-calling orchestration, a deliberate refusal, and proof of live deployment via request-ID trace lookup — see "Day 6: real findings" below for the honest story behind what the video shows.)*
 
 ## Problem
