@@ -57,7 +57,7 @@ CRISIS_TERMS = [
 # want to hurt myself." This is a narrow, deliberately simple fix, not
 # a general negation parser — it will not catch every negation
 # construction, and that limitation is stated here, not hidden.
-NEGATION_CUES = ["not", "don't", "dont", "never", "no ", "isn't", "isnt"]
+NEGATION_CUES = NEGATION_CUES = ["not ", "don't", "dont", "never", "no ", "isn't", "isnt"]
 NEGATION_WINDOW = 40  # characters to look back before a matched phrase.
 # Widened from an initial 20 to 40 after testing against the real
 # golden-set case: "I am not saying I want to hurt myself" has 27
