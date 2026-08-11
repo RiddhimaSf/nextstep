@@ -1,0 +1,23 @@
+# Pre-commit hook configuration — Day 6 fix, added after a real incident
+# (see README's "Day 6: real findings" section): two hardcoded API keys
+# were committed before being caught, one by GitHub's push protection,
+# one already public before that. Disclosure and rotation after the
+# fact is necessary but not sufficient — this adds a preventive control
+# so the same mistake can't happen again silently.
+#
+# Setup (one-time):
+#   pip install pre-commit detect-secrets
+#   pre-commit install
+#   detect-secrets scan > .secrets.baseline
+#
+# From then on, `git commit` automatically runs this scan first and
+# blocks the commit if a likely secret is found, before it ever reaches
+# GitHub — catching this class of mistake locally, not relying on
+# GitHub's push protection as the only line of defense.
+
+repos:
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.5.0
+    hooks:
+      - id: detect-secrets
+        args: ['--baseline', '.secrets.baseline']

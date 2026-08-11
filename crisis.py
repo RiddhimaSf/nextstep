@@ -18,6 +18,24 @@ from tools.slack_client import post_escalation_to_slack
 
 USE_RAG = True
 
+# Startup guard against the class of bug found on Day 6: an empty vector
+# store shipped to production silently, returning INSUFFICIENT_CONTEXT
+# for every question with no operator-visible alarm — discovered only
+# via a manual diagnostic. This assertion fails loud, on boot, rather
+# than failing silent on every request, so a future empty-store bug
+# (from a bad build, a wiped volume, etc.) is caught immediately instead
+# of requiring the same manual diagnostic process again.
+if USE_RAG:
+    from rag.retrieve import search_kb
+    _startup_check = search_kb("startup healthcheck query", k=1)
+    assert len(_startup_check) > 0, (
+        "STARTUP FAILURE: Vector store appears empty (0 results returned "
+        "for a basic query). This is the exact failure mode found on Day "
+        "6 — the deployed image was built without running rag/ingest.py, "
+        "or the ingest step failed silently. Check the Docker build logs "
+        "for the 'RUN python -m rag.ingest' step before deploying further."
+    )
+
 st.set_page_config(page_title="NextStep", page_icon="👣", layout="centered")
 
 # ── API Keys ──────────────────────────────────────────────────────────────────
@@ -618,11 +636,6 @@ elif st.session_state.step == 7:
 
             st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
             card("", result.get("answer", "I wasn't able to complete that — please try again."))
-            st.markdown(
-                f"<div style='font-size:11px;color:#9B7B6B;margin-top:4px;'>request ID: {result.get('request_id', 'n/a')}</div>",
-                unsafe_allow_html=True
-            )
-
 
         else:
             client = anthropic.Anthropic(api_key=ANTHROPIC_KEY)
@@ -651,8 +664,6 @@ elif st.session_state.step == 7:
                 )
             st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
             card("", message.content[0].text)
-            
-            
 
     back_button(6)
 
