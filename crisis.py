@@ -25,16 +25,21 @@ USE_RAG = True
 # than failing silent on every request, so a future empty-store bug
 # (from a bad build, a wiped volume, etc.) is caught immediately instead
 # of requiring the same manual diagnostic process again.
-if USE_RAG:
+@st.cache_resource
+def _verify_vector_store_populated():
     from rag.retrieve import search_kb
-    _startup_check = search_kb("startup healthcheck query", k=1)
-    assert len(_startup_check) > 0, (
+    results = search_kb("startup healthcheck query", k=1)
+    assert len(results) > 0, (
         "STARTUP FAILURE: Vector store appears empty (0 results returned "
         "for a basic query). This is the exact failure mode found on Day "
         "6 — the deployed image was built without running rag/ingest.py, "
         "or the ingest step failed silently. Check the Docker build logs "
         "for the 'RUN python -m rag.ingest' step before deploying further."
     )
+    return True
+
+if USE_RAG:
+    _verify_vector_store_populated()
 
 st.set_page_config(page_title="NextStep", page_icon="👣", layout="centered")
 
