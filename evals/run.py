@@ -150,73 +150,77 @@ def check_gates(report: dict, gates: dict) -> tuple[bool, list[str]]:
 
 
 def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--llm-judge", action="store_true")
-    parser.add_argument("--severity", choices=["P0", "P1", "P2"], default=None)
-    args = parser.parse_args()
+    try:
+        parser = argparse.ArgumentParser()
+        parser.add_argument("--llm-judge", action="store_true")
+        parser.add_argument("--severity", choices=["P0", "P1", "P2"], default=None)
+        args = parser.parse_args()
 
-    cases = load_cases(args.severity)
-    gates = load_gates()
+        cases = load_cases(args.severity)
+        gates = load_gates()
 
-    print(f"\n=== NextStep Regression Suite ===")
-    print(f"Cases: {len(cases)} | LLM judge: {args.llm_judge}\n")
+        print(f"\n=== NextStep Regression Suite ===")
+        print(f"Cases: {len(cases)} | LLM judge: {args.llm_judge}\n")
 
-    scores = []
-    t0 = time.time()
+        scores = []
+        t0 = time.time()
 
-    for case in cases:
-        print(f"Running {case.id} [{case.severity}]...", end=" ", flush=True)
-        try:
-            result = run_agent(case.input)
-            score = score_case(case, result, args.llm_judge)
-            scores.append(score)
-            status = "PASS" if score.pass_ else f"FAIL ({score.failure_mode})"
-            print(status)
-        except Exception as e:
-            print(f"ERROR: {e}")
-            scores.append(CaseScore(
-                id=case.id,
-                **{"pass": False},
-                tool_match=0.0,
-                citation_ok=False,
-                notes=str(e),
-                failure_mode="runner_error",
-            ))
+        for case in cases:
+            print(f"Running {case.id} [{case.severity}]...", end=" ", flush=True)
+            try:
+                result = run_agent(case.input)
+                score = score_case(case, result, args.llm_judge)
+                scores.append(score)
+                status = "PASS" if score.pass_ else f"FAIL ({score.failure_mode})"
+                print(status)
+            except Exception as e:
+                print(f"ERROR: {e}")
+                scores.append(CaseScore(
+                    id=case.id,
+                    **{"pass": False},
+                    tool_match=0.0,
+                    citation_ok=False,
+                    notes=str(e),
+                    failure_mode="runner_error",
+                ))
 
-    elapsed = time.time() - t0
-    report = summarize(scores, cases, elapsed)
+        elapsed = time.time() - t0
+        report = summarize(scores, cases, elapsed)
 
-    # Write timestamped results
-    RESULTS_DIR.mkdir(exist_ok=True)
-    out_path = RESULTS_DIR / f"{report['timestamp']}.json"
-    out_path.write_text(json.dumps(report, indent=2))
+        RESULTS_DIR.mkdir(exist_ok=True)
+        out_path = RESULTS_DIR / f"{report['timestamp']}.json"
+        out_path.write_text(json.dumps(report, indent=2))
+        latest = RESULTS_DIR / "latest.json"
+        latest.write_text(json.dumps(report, indent=2))
 
-    # Update latest symlink
-    latest = RESULTS_DIR / "latest.json"
-    latest.write_text(json.dumps(report, indent=2))
+        passed, msgs = check_gates(report, gates)
 
-    # Check gates
-    passed, msgs = check_gates(report, gates)
+        m = report["metrics"]
+        print(f"\n=== Results ===")
+        print(f"Overall: {m['passed']}/{m['total']} ({m['pass_rate']:.1%})")
+        print(f"P0: {m['p0_passed']}/{m['p0_total']}")
+        if m["mean_faithfulness"]:
+            print(f"Mean faithfulness: {m['mean_faithfulness']:.2f}")
+        print(f"Elapsed: {elapsed:.1f}s")
+        print(f"Results: {out_path}")
 
-    # Print summary
-    m = report["metrics"]
-    print(f"\n=== Results ===")
-    print(f"Overall: {m['passed']}/{m['total']} ({m['pass_rate']:.1%})")
-    print(f"P0: {m['p0_passed']}/{m['p0_total']}")
-    if m["mean_faithfulness"]:
-        print(f"Mean faithfulness: {m['mean_faithfulness']:.2f}")
-    print(f"Elapsed: {elapsed:.1f}s")
-    print(f"Results: {out_path}")
+        print(f"\n=== Gate Check ===")
+        if passed:
+            print("ALL GATES PASSED ✓")
+        else:
+            print("GATES FAILED ✗")
+            for msg in msgs:
+                print(f"  {msg}")
 
-    print(f"\n=== Gate Check ===")
-    if passed:
-        print("ALL GATES PASSED ✓")
-    else:
-        print("GATES FAILED ✗")
-        for msg in msgs:
-            print(f"  {msg}")
+        raise SystemExit(0 if passed else 1)
 
-    raise SystemExit(0 if passed else 1)
+    except SystemExit:
+        raise  # let gate exits through cleanly
+    except Exception as e:
+        print(f"\nRUNNER ERROR (exit code 2 — infra/dependency failure, not a gate breach): {e}")
+        import traceback
+        traceback.print_exc()
+        raise SystemExit(2)
 
 
 if __name__ == "__main__":
