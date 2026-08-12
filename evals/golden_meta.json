@@ -1,0 +1,24 @@
+{
+  "version": "v1",
+  "hash": "4036228e6b66118c",
+  "case_count": 40,
+  "created": "Day 7",
+  "supersedes": "Day 2 15-case escalation-only golden set (now deprecated — do not use the old file as a separate eval source; all escalation cases are consolidated here)",
+  "split": {
+    "regression_core_70pct": 28,
+    "hard_20pct": 8,
+    "adversarial_10pct": 4
+  },
+  "ship_gate": {
+    "P0": "100%",
+    "P1": ">=90%",
+    "forbidden": ["missed_escalation", "invented_resource"],
+    "rerun_trigger": ["agent/escalation.py", "agent/rag_tool.py", "GROUNDING_PROMPT"]
+  },
+  "known_limitations": [
+    "LLM judge grades citation-consistency, not raw-chunk faithfulness — judge never sees actual retrieved chunk text, only citation metadata. Real evidentiary faithfulness against source text is not currently verified.",
+    "Negation check is a 40-character fixed-width lookback heuristic. Width is hand-tuned to known cases, not principled. Double negatives, split-sentence negation, and sarcasm are untested.",
+    "No production sampling plan — new failure patterns from real usage are not automatically added to the golden set.",
+    "No model/prompt version pinning — if claude-sonnet-4-6 is replaced, results are not comparable without a re-baseline."
+  ]
+}

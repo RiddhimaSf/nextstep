@@ -8,3 +8,4 @@ chroma_db/
 logs/
 escalation_log.txt
 sent_escalation_keys.txt
+evals/results/
