@@ -1,11 +1,11 @@
-name: Eval Gate
+ name: Eval Gate
 
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
-  workflow_dispatch:  # allows manual trigger from GitHub UI
+  workflow_dispatch:
 
 jobs:
   eval:
@@ -22,9 +22,11 @@ jobs:
 
       - name: Install dependencies
         run: pip install -r requirements.txt
+
       - name: Build vector store
         run: python -m rag.ingest
-        - name: Debug secrets
+
+      - name: Debug secrets
         env:
           ANTHROPIC_KEY: ${{ secrets.ANTHROPIC_KEY }}
         run: |
@@ -33,6 +35,7 @@ jobs:
           else
             echo "ANTHROPIC_KEY is SET (length: ${#ANTHROPIC_KEY})"
           fi
+
       - name: Run P0 eval gate
         env:
           ANTHROPIC_KEY: ${{ secrets.ANTHROPIC_KEY }}
@@ -42,7 +45,7 @@ jobs:
         run: make eval-p0
 
       - name: Upload eval results
-        if: always()  # upload even if gate fails
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: eval-results
