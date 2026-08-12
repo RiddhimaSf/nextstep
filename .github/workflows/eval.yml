@@ -24,6 +24,15 @@ jobs:
         run: pip install -r requirements.txt
       - name: Build vector store
         run: python -m rag.ingest
+        - name: Debug secrets
+        env:
+          ANTHROPIC_KEY: ${{ secrets.ANTHROPIC_KEY }}
+        run: |
+          if [ -z "$ANTHROPIC_KEY" ]; then
+            echo "ANTHROPIC_KEY is EMPTY"
+          else
+            echo "ANTHROPIC_KEY is SET (length: ${#ANTHROPIC_KEY})"
+          fi
       - name: Run P0 eval gate
         env:
           ANTHROPIC_KEY: ${{ secrets.ANTHROPIC_KEY }}
