@@ -7,7 +7,7 @@ import time
 import uuid
 import anthropic
 
-ANTHROPIC_KEY = os.environ.get("ANTHROPIC_KEY", "")
+
 TRACE_LOG_PATH = "logs/traces.jsonl"
 
 
@@ -237,7 +237,7 @@ class AgentRuntime:
         ]
 
     def _call_model(self, messages: list[dict]) -> dict:
-        client = anthropic.Anthropic(api_key=ANTHROPIC_KEY)
+        client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_KEY", ""))
         response = client.messages.create(
             model=self.model,
             max_tokens=1000,

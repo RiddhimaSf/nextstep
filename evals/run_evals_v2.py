@@ -39,7 +39,7 @@ GOLDEN_PATH = Path(__file__).parent / "golden.jsonl"
 RESULTS_PATH = Path(__file__).parent / "results_v1.jsonl"
 
 import anthropic
-_client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_KEY", ""))
+
 
 
 def load_cases(severity_filter: str | None = None) -> list[GoldenCase]:
@@ -295,7 +295,8 @@ def llm_judge(case: GoldenCase, result: dict) -> dict | None:
     )
 
     try:
-        response = _client.messages.create(
+        client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_KEY", ""))
+        response = client.messages.create(
             model="claude-sonnet-4-6",
             max_tokens=300,
             messages=[{"role": "user", "content": prompt}],
