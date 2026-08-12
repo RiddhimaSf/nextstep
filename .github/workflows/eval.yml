@@ -1,4 +1,4 @@
- name: Eval Gate
+name: Eval Gate
 
 on:
   push:
