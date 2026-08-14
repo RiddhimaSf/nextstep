@@ -9,7 +9,13 @@ import anthropic
 
 
 TRACE_LOG_PATH = "logs/traces.jsonl"
+import hashlib
 
+def _hash_msg(text: str) -> str:
+    """One-way hash of sensitive user message for logging.
+    Raw message text never lands in logs or external systems.
+    Request ID is the correlation key."""
+    return "sha256:" + hashlib.sha256(text.encode()).hexdigest()[:16]
 
 def persist_trace(request_id: str, user_msg: str, result: dict) -> None:
     """
@@ -33,7 +39,7 @@ def persist_trace(request_id: str, user_msg: str, result: dict) -> None:
     log_entry = {
         "request_id": request_id,
         "timestamp": time.time(),
-        "user_msg": user_msg,
+        "user_msg_hash": _hash_msg(user_msg),
         "result": result,
     }
     log_line = json.dumps(log_entry)

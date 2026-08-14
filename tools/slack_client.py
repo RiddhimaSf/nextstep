@@ -21,6 +21,10 @@ SLACK_CHANNEL_ID = os.environ.get("SLACK_CHANNEL_ID", "")
 # proper database in true production, but a real fix, not just documented
 # as a known limitation, since this was directly testable and fixable
 # today.
+# WARNING (Armando review finding #3): This file lives on Render's ephemeral
+# filesystem. A container restart wipes it, re-opening the duplicate-escalation
+# bug fixed on Day 5. Real fix requires a persistent store (Redis, Postgres)
+# outside the container. Documented here, not silently left as a gap.
 _SENT_KEYS_FILE = "sent_escalation_keys.txt"
 
 
@@ -46,7 +50,13 @@ def post_escalation_to_slack(user_id: str, reason: str, dry_run: bool = False) -
             data={"receipt": "Already escalated (duplicate call prevented)", "idempotency_key": key},
         )
 
-    message_text = f":rotating_light: *Escalation* from user `{user_id}`\nReason: {reason}"
+    key_preview = key[:16]
+    message_text = (
+        f":rotating_light: *Crisis escalation detected*\n"
+        f"Request ID: `{key_preview}...`\n"
+        f"Retrieve full context: `print_trace('{key_preview}...')`\n"
+        f"Raw message intentionally omitted — retrieve via request ID from secured log store."
+    )
 
     if dry_run:
         return ToolResult(

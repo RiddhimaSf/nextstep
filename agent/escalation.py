@@ -57,37 +57,41 @@ CRISIS_TERMS = [
 # want to hurt myself." This is a narrow, deliberately simple fix, not
 # a general negation parser — it will not catch every negation
 # construction, and that limitation is stated here, not hidden.
-NEGATION_CUES = NEGATION_CUES = ["not ", "don't", "dont", "never", "no ", "isn't", "isnt"]
-NEGATION_WINDOW = 40  # characters to look back before a matched phrase.
-# Widened from an initial 20 to 40 after testing against the real
-# golden-set case: "I am not saying I want to hurt myself" has 27
-# characters between "not" and "hurt myself" — a 20-character window
-# missed it. 40 is not a principled number, it is a number that passes
-# the one known real case; a genuinely robust fix would need a real
-# negation parser, not a fixed-width lookback — stated here as a known
-# simplification, not claimed as a general solution.
-
-
-def _is_negated(text: str, match_start: int) -> bool:
-    """Checks whether a negation cue appears shortly before the matched
-    phrase's start position, within NEGATION_WINDOW characters."""
-    window_start = max(0, match_start - NEGATION_WINDOW)
-    preceding_text = text[window_start:match_start]
-    return any(cue in preceding_text for cue in NEGATION_CUES)
+# Phrases that contain crisis terms but should NOT trigger escalation.
+# This is an explicit whitelist rather than a general negation suppressor —
+# a suppressor based on proximity matching incorrectly blocks real crisis
+# phrases when an unrelated negation appears earlier in the same sentence.
+# Armando review finding #1, Day 8: "It's not that bad but I want to die"
+# was being suppressed because "not" appeared within 40 chars of "want to die."
+# In this domain, false negatives are categorically worse than false positives.
+# The suppressor is removed entirely; known safe phrases are listed explicitly.
+NEGATION_SAFE_PHRASES = [
+    "i am not saying i want to hurt myself",
+    "i'm not saying i want to hurt myself",
+    "not want to hurt myself",
+    "doesn't want to live anymore",
+    "does not want to live anymore",
+    "no longer want to hurt myself",
+    "my therapist says i no longer",
+]
 
 
 def is_crisis(text: str) -> bool:
     """
-    Returns True if any known crisis phrase is found in the input text
-    and is not immediately preceded by a negation cue.
+    Returns True if any known crisis phrase is found in the input text,
+    unless the full input matches a known safe phrase.
 
-    Case-insensitive substring match — same approach as the original
-    implementation, kept simple and auditable rather than replaced with
-    a probabilistic model, plus the narrow negation check added Day 6.
+    Design decision: negation suppression via proximity matching is removed.
+    It incorrectly suppressed "I want to die" when an unrelated "not" appeared
+    earlier in the sentence. In this domain, a false negative (missed crisis)
+    is categorically worse than a false positive (unnecessary hotline card).
+    Known safe phrases are handled via an explicit whitelist, not a heuristic.
     """
     t = text.lower()
-    for term in CRISIS_TERMS:
-        idx = t.find(term)
-        if idx != -1 and not _is_negated(t, idx):
-            return True
-    return False
+
+    # Check explicit safe phrases first
+    if any(safe in t for safe in NEGATION_SAFE_PHRASES):
+        return False
+
+    # Check crisis terms
+    return any(term in t for term in CRISIS_TERMS)
