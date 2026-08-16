@@ -55,16 +55,11 @@ The 78% agreement figure is on synthetic traffic written by the same person who 
 
 ---
 
-## The hardest open question — and the version 2 answer
+## Known gap: escalation coverage
 
-**The question every interviewer asks:** "Your phrase list misses novel crisis phrasing. What's version 2?"
+The phrase list cannot generalize to novel crisis phrasing. Shadow run found 4 cases where the agent responded compassionately but did not surface the 988 hotline. The phrase list catches what's in the list; it cannot catch paraphrase variations it hasn't seen.
 
-**The current gap:** shadow run found 4 cases where the agent responded compassionately to a crisis input but did not surface the 988 hotline. The phrase list catches what's in it; it cannot generalize.
-
-**Version 2 design:** a small classifier running as a second gate after the phrase list, before any LLM call. The phrase list stays as the fast, auditable first gate (microseconds, zero false negatives on known phrases). The classifier adds coverage for paraphrase misses — catching "I cannot say that I do not want to hurt myself anymore" (confirmed gap) without introducing model-judgment-in-the-loop risk.
-
-**What this is not:** a plan already validated with a data source. Training data would ideally come from crisis hotline intake literature or clinical datasets — this would require a formal partnership and data governance agreement, neither of which is in place. The design is directional. The gap is real. The blocker for building it is data access, not architecture.
-
+**Version 2 design:** a small classifier as a second gate after the phrase list, before any LLM call — catching paraphrase misses without introducing model-judgment-in-the-loop risk. Would require training data from crisis hotline intake literature or clinical datasets, which would need a formal partnership and data governance agreement not currently in place. The architecture is clear; the data access is the blocker.
 ---
 
 ## See it in 90 seconds
@@ -199,7 +194,7 @@ CI gate runs on every push to main via GitHub Actions. Exit code 0 = gates passe
 - **Claude (Sonnet)**: ~$0.007/request based on shadow run measurements
 - **Google Maps API**: pay-per-call beyond a free monthly credit; low-volume demo usage stays within Google's free tier
 - **Slack**: free for this usage pattern
-- **Hosting (Render)**: $7/month paid tier (upgraded from free to eliminate cold starts)
+- **Hosting (Render)**: live deployment, no cold starts
 - **Chroma**: local, embedded, no cost
 
 ---
