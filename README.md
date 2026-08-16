@@ -59,7 +59,7 @@ The 78% agreement figure is on synthetic traffic written by the same person who 
 
 The phrase list cannot generalize to novel crisis phrasing. Shadow run found 4 cases where the agent responded compassionately but did not surface the 988 hotline. The phrase list catches what's in the list; it cannot catch paraphrase variations it hasn't seen.
 
-Version 2 design: a small classifier as a second gate after the phrase list, before any LLM call — catching paraphrase misses without introducing model-judgment-in-the-loop risk. Would require training data from crisis hotline intake literature or clinical datasets, which would need a formal partnership and data governance agreement not currently in place. The architecture is clear; the data access is the blocker.
+Next iteration: a small classifier as a second gate after the phrase list, before any LLM call — catching paraphrase misses without introducing model-judgment-in-the-loop risk. Would require training data from crisis hotline intake literature or clinical datasets, which would need a formal partnership and data governance agreement not currently in place. The architecture is clear; the data access is the blocker.
 ---
 
 ## See it in 90 seconds
