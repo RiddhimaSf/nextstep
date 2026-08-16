@@ -55,7 +55,7 @@ The 78% agreement figure is on synthetic traffic written by the same person who 
 
 ---
 
-## Known gap: escalation coverage
+**Known gap: escalation coverage**
 
 The phrase list cannot generalize to novel crisis phrasing. Shadow run found 4 cases where the agent responded compassionately but did not surface the 988 hotline. The phrase list catches what's in the list; it cannot catch paraphrase variations it hasn't seen.
 
